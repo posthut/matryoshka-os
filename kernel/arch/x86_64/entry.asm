@@ -29,6 +29,7 @@ _start:
     
     ; Save Multiboot information
     mov edi, ebx                    ; EBX contains Multiboot info pointer
+    mov esi, eax                    ; EAX contains Multiboot magic
     
     ; Check CPU compatibility
     call check_cpuid
@@ -155,7 +156,11 @@ long_mode_start:
     mov rcx, 500                     ; 80*25 / 4
     rep stosq
     
-    ; Call kernel main
+    ; Restore Multiboot info pointer to RDI (first parameter in System V AMD64 ABI)
+    ; EDI was saved in 32-bit mode, now extend to RDI in 64-bit mode
+    mov edi, edi                     ; Zero-extend EDI to RDI
+    
+    ; Call kernel main with Multiboot info
     call kernel_main
     
     ; If kernel returns, halt

@@ -30,6 +30,10 @@ SECTIONS
         *(.bss.*)
     }
 
+    /* End of kernel marker */
+    . = ALIGN(4K);
+    _kernel_end = .;
+
     /* Stack section */
     .stack ALIGN(4K) : {
         . = . + 16K;      /* 16KB initial stack */
