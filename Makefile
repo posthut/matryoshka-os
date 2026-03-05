@@ -22,11 +22,12 @@ LD := ld
 OBJCOPY := objcopy
 
 # Flags
-ASFLAGS := -f elf64
-CFLAGS := -ffreestanding -nostdlib -mcmodel=large -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
-          -Wall -Wextra -Werror -std=c11 -O2 -g \
-          -I$(KERNEL_DIR)/include
-LDFLAGS := -nostdlib -T linker.ld
+ASFLAGS := -f elf32
+CFLAGS := -m32 -ffreestanding -nostdlib -mno-red-zone -mno-mmx -mno-sse -mno-sse2 \
+          -Wall -Wextra -Wno-pointer-to-int-cast -Wno-int-to-pointer-cast \
+          -std=c11 -O2 -g -I$(KERNEL_DIR)/include
+LDFLAGS := -m elf_i386 -nostdlib -T linker.ld
+LIBGCC := $(shell gcc -m32 -print-libgcc-file-name)
 
 # Source files
 ASM_SOURCES := $(shell find $(KERNEL_DIR) -name '*.asm')
@@ -92,18 +93,19 @@ $(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
 # Link kernel
 $(BUILD_DIR)/$(KERNEL_BIN): $(OBJECTS)
 	@echo "$(COLOR_YELLOW)LD$(COLOR_RESET)   $@"
-	@$(LD) $(LDFLAGS) -o $@ $(OBJECTS)
+	@$(LD) $(LDFLAGS) -o $@ $(OBJECTS) $(LIBGCC)
 	@cp $@ $(BUILD_DIR)/$(KERNEL_BIN_SHORT)
 	@echo "$(COLOR_GREEN)✓ Kernel linked successfully$(COLOR_RESET)"
 
-# Create ISO image
+# Create ISO image (UEFI + Legacy BIOS hybrid)
 iso: $(BUILD_DIR)/$(KERNEL_BIN)
-	@echo "$(COLOR_BLUE)Creating bootable ISO image...$(COLOR_RESET)"
+	@echo "$(COLOR_BLUE)Creating bootable ISO image (UEFI)...$(COLOR_RESET)"
 	@mkdir -p $(ISOFILES_DIR)/boot/grub
 	@cp $(BUILD_DIR)/$(KERNEL_BIN) $(ISOFILES_DIR)/boot/
 	@cp grub.cfg $(ISOFILES_DIR)/boot/grub/
-	@grub-mkrescue -o $(ISO_DIR)/$(ISO_FILE) $(ISOFILES_DIR) 2>/dev/null
+	@grub-mkrescue --compress=xz -o $(ISO_DIR)/$(ISO_FILE) $(ISOFILES_DIR) 2>/dev/null
 	@echo "$(COLOR_GREEN)✓ ISO created: $(ISO_DIR)/$(ISO_FILE)$(COLOR_RESET)"
+	@echo "$(COLOR_YELLOW)  Supports: UEFI (x86_64) + Legacy BIOS (i386)$(COLOR_RESET)"
 
 # Run in QEMU
 run: iso

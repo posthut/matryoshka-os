@@ -8,10 +8,19 @@ SECTIONS
     /* Kernel starts at 1MB mark (standard for x86_64) */
     . = 1M;
 
-    /* Read-only sections */
+    /* Multiboot2 header must be in first 32KB */
+    .multiboot ALIGN(8) : {
+        *(.multiboot)
+    }
+
+    /* Boot code immediately after multiboot header */
+    .text.boot ALIGN(16) : {
+        *(.text.boot)     /* Entry point (_start) */
+    }
+
+    /* Rest of code sections */
     .text ALIGN(4K) : {
-        *(.text.boot)     /* Entry point first */
-        *(.text)          /* Code */
+        *(.text)          /* All other code */
     }
 
     .rodata ALIGN(4K) : {

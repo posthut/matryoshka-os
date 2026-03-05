@@ -7,6 +7,9 @@ build/
 
 # ISO building
 iso/isofiles/
+iso/simple/
+iso/test/
+iso/*-kernel.iso
 
 # Test artifacts
 *.pyc
@@ -36,6 +39,16 @@ coverage/
 # Backup files
 *.bak
 *.tmp
+*_test.c
+*_simple.*
+*_full.*.bak
+COMMIT_EDITMSG_TMP
+
+# Temporary session files
+SESSION_STATUS.md
+NEXT_SESSION.md
+SETUP_COMPLETE.md
+GITHUB_READY.md
 
 # Session files (QEMU, VMware)
 *.qcow2
