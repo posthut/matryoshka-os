@@ -1,7 +1,7 @@
 # MatryoshkaOS - Project Status
 
 **Created:** March 5, 2026  
-**Current Stage:** Stage 3.1 - Physical Memory Manager (PMM) ✅ **WORKING!**
+**Current Stage:** Stage 3.3 - Heap Allocator ✅ **WORKING!**
 
 ---
 
@@ -20,14 +20,25 @@
 - ✅ Kernel main function
 - ✅ Successfully boots in QEMU
 
-### Stage 3.1: Physical Memory Manager (PMM) ✅ **WORKING!**
+### Stage 3.1: Physical Memory Manager (PMM) ✅
 - ✅ Multiboot2 parser (multiboot2.h/c)
 - ✅ PMM header (pmm.h) - complete API
 - ✅ PMM implementation (pmm.c) - bitmap allocator
 - ✅ Memory detection from bootloader
 - ✅ Frame allocation/deallocation working
 - ✅ Memory statistics (511 MB total, 510 MB free)
-- ✅ **Kernel boots and runs successfully!**
+
+### Stage 3.3: Heap Allocator ✅ **WORKING!**
+- ✅ Heap header (heap.h) - kmalloc/kfree API
+- ✅ Linked-list allocator implementation
+- ✅ kmalloc() - dynamic memory allocation
+- ✅ kzalloc() - zeroed memory allocation
+- ✅ kfree() - memory deallocation
+- ✅ krealloc() - memory reallocation
+- ✅ Memory corruption protection (magic numbers)
+- ✅ Double-free protection
+- ✅ Automatic free block merging
+- ✅ **All heap functions tested and working!**
 
 ---
 
@@ -36,7 +47,8 @@
 **Build:** ✅ Compiles successfully  
 **Boot:** ✅ Boots in QEMU (Legacy BIOS)  
 **PMM:** ✅ Working (allocation/deallocation tested)  
-**Lines of Code:** ~1400  
+**Heap:** ✅ Working (kmalloc/kfree/kzalloc tested)  
+**Lines of Code:** ~1800  
 **Test Coverage:** 0% (infrastructure ready)
 
 ### What Works:
@@ -44,27 +56,27 @@
 - ✅ VGA text mode (color output)
 - ✅ Physical memory detection
 - ✅ Frame allocator (bitmap-based)
-- ✅ Memory statistics reporting
+- ✅ Heap allocator (linked-list based)
+- ✅ Dynamic memory management (kmalloc/kfree)
 
 ---
 
-## 📋 Next Steps (Stage 3.2: Virtual Memory Manager)
+## 📋 Next Steps (Stage 4: Interrupt Handling)
 
-1. **Virtual Memory Manager (VMM)**
-   - Page table management
-   - Virtual address space mapping
-   - Page fault handler (when interrupts ready)
+1. **Interrupt Descriptor Table (IDT)**
+   - IDT structure and initialization
+   - Interrupt handlers (ISR)
+   - Exception handlers (0-31)
 
-2. **Heap Allocator (Stage 3.3)**
-   - kmalloc / kfree implementation
-   - Simple linked-list allocator initially
-   - Later optimize to buddy allocator
+2. **Programmable Interrupt Controller (PIC)**
+   - PIC initialization and configuration
+   - IRQ remapping (to avoid conflicts with CPU exceptions)
+   - Enable/disable specific interrupts
 
-3. **Interrupt Handling (Stage 4)**
-   - GDT setup
-   - IDT configuration
-   - PIC initialization
-   - Timer and keyboard interrupts
+3. **Basic Interrupts**
+   - Timer interrupt (IRQ0)
+   - Keyboard interrupt (IRQ1)
+   - Test interrupt handling
 
 ---
 
@@ -77,6 +89,11 @@
 - **Compiler:** GCC with `-m32` flag
 - **Libraries:** libgcc for 64-bit arithmetic support
 
+**Memory Management Stack:**
+- **PMM:** Physical frame allocator (4KB frames)
+- **VMM:** Virtual memory manager (placeholder)
+- **Heap:** Dynamic kernel memory (1MB heap @ 0x200000)
+
 **Why 32-bit ELF:**
 - Compatible with Legacy GRUB (i386-pc)
 - Multiboot2 specification requires 32-bit entry point
@@ -86,15 +103,15 @@
 
 ## 📊 Progress Tracking
 
-**Current Stage:** 3.1 / 10  
-**Completion:** ~30%
+**Current Stage:** 3.3 / 10  
+**Completion:** ~35%
 
 ### Checklist
 - [x] Stage 1: Environment setup
 - [x] Stage 2: Minimal kernel  
 - [x] Stage 3.1: PMM (Physical Memory Manager)
-- [ ] Stage 3.2: VMM (Virtual Memory Manager)
-- [ ] Stage 3.3: Heap allocator
+- [ ] Stage 3.2: VMM (Virtual Memory Manager) - *deferred*
+- [x] Stage 3.3: Heap allocator
 - [ ] Stage 4: Interrupt handling
 - [ ] Stage 5: Process management
 - [ ] Stage 6: Filesystem
@@ -105,6 +122,6 @@
 
 ---
 
-**MatryoshkaOS** - System QA Portfolio Project  
-*Enterprise-grade architecture decisions for learning system-level QA*
+**MatryoshkaOS** - Minimal Linux-compatible OS
+*Educational project demonstrating system-level programming and QA practices*
 

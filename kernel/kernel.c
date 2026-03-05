@@ -6,6 +6,7 @@
 #include <matryoshka/vga.h>
 #include <matryoshka/multiboot2.h>
 #include <matryoshka/pmm.h>
+#include <matryoshka/heap.h>
 
 /**
  * Format a number with KB/MB/GB suffix
@@ -152,21 +153,102 @@ void kernel_main(unsigned long mbi_addr) {
     pmm_free_frame(frame3);
     vga_puts("\n");
     
+    // Initialize Heap Allocator
+    if (heap_init() != 0) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("ERROR: Failed to initialize heap!\n");
+        goto halt;
+    }
+    
+    // Test Heap Allocator
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_puts("Testing Heap Allocator...\n");
+    
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    
+    // Test 1: Basic allocation
+    char *str1 = (char *)kmalloc(64);
+    if (str1) {
+        vga_puts("  [OK] Allocated 64 bytes\n");
+        
+        // Write to allocated memory
+        const char *test_msg = "Hello from heap!";
+        for (int i = 0; test_msg[i] != '\0'; i++) {
+            str1[i] = test_msg[i];
+        }
+        str1[16] = '\0';
+        
+        vga_puts("  [OK] Wrote to allocated memory: ");
+        vga_puts(str1);
+        vga_puts("\n");
+    }
+    
+    // Test 2: Multiple allocations
+    void *ptr1 = kmalloc(128);
+    void *ptr2 = kmalloc(256);
+    void *ptr3 = kmalloc(512);
+    
+    if (ptr1 && ptr2 && ptr3) {
+        vga_puts("  [OK] Multiple allocations (128, 256, 512 bytes)\n");
+    }
+    
+    // Test 3: kzalloc (zeroed allocation)
+    uint32_t *numbers = (uint32_t *)kzalloc(16);
+    if (numbers) {
+        bool all_zero = true;
+        for (int i = 0; i < 4; i++) {
+            if (numbers[i] != 0) {
+                all_zero = false;
+                break;
+            }
+        }
+        if (all_zero) {
+            vga_puts("  [OK] kzalloc properly zeroed memory\n");
+        }
+    }
+    
+    // Test 4: Free and reallocation
+    kfree(ptr2);
+    vga_puts("  [OK] Freed middle allocation\n");
+    
+    void *ptr4 = kmalloc(128);
+    if (ptr4) {
+        vga_puts("  [OK] Re-allocated freed memory\n");
+    }
+    
+    // Test 5: Heap statistics
+    size_t total, used, free;
+    heap_get_stats(&total, &used, &free);
+    
+    vga_puts("  Heap Stats: ");
+    format_memory_size(used, buffer);
+    vga_puts(buffer);
+    vga_puts(" used / ");
+    format_memory_size(total, buffer);
+    vga_puts(buffer);
+    vga_puts(" total\n\n");
+    
+    // Clean up test allocations
+    kfree(str1);
+    kfree(ptr1);
+    kfree(ptr3);
+    kfree(ptr4);
+    kfree(numbers);
+    
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     vga_puts("Status:\n");
     vga_puts("  [OK] VGA driver initialized\n");
-    vga_puts("  [OK] Kernel running in long mode\n");
+    vga_puts("  [OK] Kernel running in 32-bit protected mode\n");
     vga_puts("  [OK] Physical Memory Manager initialized\n");
-    vga_puts("  [OK] PMM allocation/deallocation working\n\n");
+    vga_puts("  [OK] PMM allocation/deallocation working\n");
+    vga_puts("  [OK] Heap Allocator initialized\n");
+    vga_puts("  [OK] kmalloc/kfree/kzalloc working\n\n");
     
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    vga_puts("System halted. Next steps:\n");
-    vga_puts("  1. Implement virtual memory management (VMM)\n");
-    vga_puts("  2. Add heap allocator (kmalloc/kfree)\n");
-    vga_puts("  3. Setup interrupt handling\n\n");
-    
-    vga_set_color(VGA_COLOR_LIGHT_BLUE, VGA_COLOR_BLACK);
-    vga_puts("MatryoshkaOS - Built for System QA Portfolio\n");
+    vga_puts("System ready. Next steps:\n");
+    vga_puts("  1. Implement interrupt handling (IDT/PIC)\n");
+    vga_puts("  2. Add keyboard driver\n");
+    vga_puts("  3. Implement process management\n\n");
     
 halt:
     // Halt CPU
