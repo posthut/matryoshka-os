@@ -1,7 +1,7 @@
 # MatryoshkaOS - Project Status
 
 **Created:** March 5, 2026  
-**Current Stage:** Stage 3.3 - Heap Allocator ✅ **WORKING!**
+**Current Stage:** Stage 4 - Interrupt Handling (IDT/PIC) ✅ **WORKING!**
 
 ---
 
@@ -28,7 +28,7 @@
 - ✅ Frame allocation/deallocation working
 - ✅ Memory statistics (511 MB total, 510 MB free)
 
-### Stage 3.3: Heap Allocator ✅ **WORKING!**
+### Stage 3.3: Heap Allocator ✅
 - ✅ Heap header (heap.h) - kmalloc/kfree API
 - ✅ Linked-list allocator implementation
 - ✅ kmalloc() - dynamic memory allocation
@@ -38,7 +38,19 @@
 - ✅ Memory corruption protection (magic numbers)
 - ✅ Double-free protection
 - ✅ Automatic free block merging
-- ✅ **All heap functions tested and working!**
+
+### Stage 4: Interrupt Handling (IDT/PIC) ✅ **WORKING!**
+- ✅ IDT header (idt.h) - complete interrupt API
+- ✅ IDT implementation (idt.c) - 256 entries
+- ✅ ISR assembly stubs (isr.asm) - CPU exceptions & IRQs
+- ✅ Exception handlers (0-31) with panic screen
+- ✅ IRQ handlers (32-47) ready for devices
+- ✅ PIC header (pic.h) - 8259 PIC API
+- ✅ PIC implementation (pic.c) - IRQ remapping
+- ✅ IRQ enable/disable/mask management
+- ✅ EOI (End of Interrupt) handling
+- ✅ Interrupts enabled (STI)
+- ✅ **System running with interrupts!**
 
 ---
 
@@ -48,7 +60,8 @@
 **Boot:** ✅ Boots in QEMU (Legacy BIOS)  
 **PMM:** ✅ Working (allocation/deallocation tested)  
 **Heap:** ✅ Working (kmalloc/kfree/kzalloc tested)  
-**Lines of Code:** ~1800  
+**IDT/PIC:** ✅ Working (interrupts enabled)  
+**Lines of Code:** ~2400  
 **Test Coverage:** 0% (infrastructure ready)
 
 ### What Works:
@@ -58,25 +71,32 @@
 - ✅ Frame allocator (bitmap-based)
 - ✅ Heap allocator (linked-list based)
 - ✅ Dynamic memory management (kmalloc/kfree)
+- ✅ Interrupt Descriptor Table (256 entries)
+- ✅ CPU exception handling with panic screen
+- ✅ PIC initialization (IRQs remapped to 32-47)
+- ✅ Interrupt enable/disable
 
 ---
 
-## 📋 Next Steps (Stage 4: Interrupt Handling)
+## 📋 Next Steps (Stage 4+: Device Drivers)
 
-1. **Interrupt Descriptor Table (IDT)**
-   - IDT structure and initialization
-   - Interrupt handlers (ISR)
-   - Exception handlers (0-31)
+1. **Timer Driver (PIT - Programmable Interval Timer)**
+   - Configure PIT frequency
+   - Implement IRQ0 handler
+   - Track system uptime (ticks)
+   - Sleep/delay functions
 
-2. **Programmable Interrupt Controller (PIC)**
-   - PIC initialization and configuration
-   - IRQ remapping (to avoid conflicts with CPU exceptions)
-   - Enable/disable specific interrupts
+2. **Keyboard Driver (PS/2)**
+   - Implement IRQ1 handler
+   - Scancode to ASCII translation
+   - Keyboard buffer
+   - Input handling
 
-3. **Basic Interrupts**
-   - Timer interrupt (IRQ0)
-   - Keyboard interrupt (IRQ1)
-   - Test interrupt handling
+3. **Process Management (Stage 5)**
+   - Task structures
+   - Context switching
+   - Scheduler (round-robin)
+   - Multitasking
 
 ---
 
@@ -94,6 +114,11 @@
 - **VMM:** Virtual memory manager (placeholder)
 - **Heap:** Dynamic kernel memory (1MB heap @ 0x200000)
 
+**Interrupt Handling:**
+- **IDT:** 256 entries (0-31 exceptions, 32-255 interrupts)
+- **PIC:** 8259 controller, IRQs 0-15 → INT 32-47
+- **ISRs:** Assembly stubs with context save/restore
+
 **Why 32-bit ELF:**
 - Compatible with Legacy GRUB (i386-pc)
 - Multiboot2 specification requires 32-bit entry point
@@ -103,8 +128,8 @@
 
 ## 📊 Progress Tracking
 
-**Current Stage:** 3.3 / 10  
-**Completion:** ~35%
+**Current Stage:** 4 / 10  
+**Completion:** ~40%
 
 ### Checklist
 - [x] Stage 1: Environment setup
@@ -112,7 +137,8 @@
 - [x] Stage 3.1: PMM (Physical Memory Manager)
 - [ ] Stage 3.2: VMM (Virtual Memory Manager) - *deferred*
 - [x] Stage 3.3: Heap allocator
-- [ ] Stage 4: Interrupt handling
+- [x] Stage 4: Interrupt handling (IDT/PIC)
+- [ ] Stage 4+: Device drivers (Timer, Keyboard)
 - [ ] Stage 5: Process management
 - [ ] Stage 6: Filesystem
 - [ ] Stage 7: System calls

@@ -7,6 +7,8 @@
 #include <matryoshka/multiboot2.h>
 #include <matryoshka/pmm.h>
 #include <matryoshka/heap.h>
+#include <matryoshka/idt.h>
+#include <matryoshka/pic.h>
 
 /**
  * Format a number with KB/MB/GB suffix
@@ -235,6 +237,19 @@ void kernel_main(unsigned long mbi_addr) {
     kfree(ptr4);
     kfree(numbers);
     
+    // Initialize Interrupt Descriptor Table
+    idt_init();
+    
+    // Initialize Programmable Interrupt Controller
+    pic_init();
+    
+    // Enable interrupts
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_puts("Enabling interrupts...\n");
+    __asm__ volatile("sti");
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_puts("  [OK] Interrupts enabled (STI)\n\n");
+    
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     vga_puts("Status:\n");
     vga_puts("  [OK] VGA driver initialized\n");
@@ -242,12 +257,15 @@ void kernel_main(unsigned long mbi_addr) {
     vga_puts("  [OK] Physical Memory Manager initialized\n");
     vga_puts("  [OK] PMM allocation/deallocation working\n");
     vga_puts("  [OK] Heap Allocator initialized\n");
-    vga_puts("  [OK] kmalloc/kfree/kzalloc working\n\n");
+    vga_puts("  [OK] kmalloc/kfree/kzalloc working\n");
+    vga_puts("  [OK] IDT initialized (256 entries)\n");
+    vga_puts("  [OK] PIC initialized (IRQs remapped)\n");
+    vga_puts("  [OK] Interrupts enabled\n\n");
     
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     vga_puts("System ready. Next steps:\n");
-    vga_puts("  1. Implement interrupt handling (IDT/PIC)\n");
-    vga_puts("  2. Add keyboard driver\n");
+    vga_puts("  1. Add timer driver (IRQ0)\n");
+    vga_puts("  2. Add keyboard driver (IRQ1)\n");
     vga_puts("  3. Implement process management\n\n");
     
 halt:
