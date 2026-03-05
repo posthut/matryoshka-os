@@ -149,16 +149,18 @@ After confirming the kernel boots:
 
 ## 📊 Progress Tracking
 
-**Current Stage:** 2 / 10  
-**Lines of Code:** ~600  
-**Test Coverage:** 0% (tests not yet written)  
-**Build Status:** Ready to build ✅
+**Current Stage:** 3.1 / 10 (Debugging)  
+**Lines of Code:** ~1350  
+**Test Coverage:** 0% (tests infrastructure ready)  
+**Build Status:** Compiles ✅ | Boot Issue 🔴
 
 ### Checklist
 
 - [x] Stage 1: Environment setup
 - [x] Stage 2: Minimal kernel
-- [ ] Stage 3: Memory management
+- [x] Stage 3.1: PMM code complete (boot debugging)
+- [ ] Stage 3.2: VMM
+- [ ] Stage 3.3: Heap allocator
 - [ ] Stage 4: Interrupt handling
 - [ ] Stage 5: Process management
 - [ ] Stage 6: Filesystem

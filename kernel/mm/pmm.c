@@ -16,8 +16,8 @@ static uint64_t total_memory = 0;
 static uint64_t highest_address = 0;
 
 // Bitmap location (placed after kernel)
-extern uint8_t _kernel_end;  // Defined in linker script
-static uint8_t *bitmap_location = &_kernel_end;
+extern char _kernel_end[];  // Defined in linker script
+static uint8_t *bitmap_location = (uint8_t*)_kernel_end;
 
 /**
  * Set a bit in the bitmap (mark frame as used)

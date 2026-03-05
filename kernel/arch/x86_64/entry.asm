@@ -150,18 +150,30 @@ long_mode_start:
     mov fs, ax
     mov gs, ax
     
-    ; Clear the screen
+    ; Debug: Write 'A' to screen (top-left corner)
+    mov word [0xB8000], 0x0F41      ; 'A' in white on black
+    
+    ; Clear the screen (skip first character)
     mov rax, 0x0F200F200F200F20     ; Space with white on black
-    mov rdi, 0xB8000
-    mov rcx, 500                     ; 80*25 / 4
+    mov rdi, 0xB8002                ; Start from second character
+    mov rcx, 499                     ; 80*25 / 4 - 1
     rep stosq
+    
+    ; Debug: Write 'B' after spaces
+    mov word [0xB8002], 0x0F42      ; 'B' in white on black
     
     ; Restore Multiboot info pointer to RDI (first parameter in System V AMD64 ABI)
     ; EDI was saved in 32-bit mode, now extend to RDI in 64-bit mode
     mov edi, edi                     ; Zero-extend EDI to RDI
     
+    ; Debug: Write 'C' before calling kernel
+    mov word [0xB8004], 0x0F43      ; 'C' in white on black
+    
     ; Call kernel main with Multiboot info
     call kernel_main
+    
+    ; Debug: Write 'D' if kernel returns
+    mov word [0xB8006], 0x0F44      ; 'D' in white on black
     
     ; If kernel returns, halt
 .halt:

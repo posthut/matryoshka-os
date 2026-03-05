@@ -106,10 +106,10 @@ iso: $(BUILD_DIR)/$(KERNEL_BIN)
 	@echo "$(COLOR_GREEN)✓ ISO created: $(ISO_DIR)/$(ISO_FILE)$(COLOR_RESET)"
 
 # Run in QEMU
-run: $(BUILD_DIR)/$(KERNEL_BIN)
+run: iso
 	@echo "$(COLOR_BLUE)Starting MatryoshkaOS in QEMU...$(COLOR_RESET)"
 	@qemu-system-x86_64 \
-		-kernel $(BUILD_DIR)/$(KERNEL_BIN) \
+		-cdrom $(ISO_DIR)/$(ISO_FILE) \
 		-m 512M \
 		-serial stdio \
 		-no-reboot \
