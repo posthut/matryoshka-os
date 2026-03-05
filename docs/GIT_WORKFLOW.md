@@ -1,6 +1,19 @@
 # Git Workflow Notes
 
-## Making Commits
+## For AI Assistant: PowerShell Git Commands
+
+**CRITICAL:** See `.cursor/GIT_POWERSHELL_REFERENCE.md` for complete reference!
+
+**Quick command for commits via PowerShell:**
+```powershell
+git commit -m "type(scope): title`n`nDetails`n- Point 1`n- Point 2"
+```
+
+Use **backtick-n** (`` `n``) for newlines, NOT `\n` or heredoc!
+
+---
+
+## Making Commits (For Users)
 
 ### Quick Commit
 ```bash
