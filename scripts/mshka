@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+# MatryoshkaOS CLI Wrapper
+# Supports both 'matryoshka' and 'mshka' commands
+
+set -e
+
+# Colors
+COLOR_RESET='\033[0m'
+COLOR_GREEN='\033[32m'
+COLOR_YELLOW='\033[33m'
+COLOR_BLUE='\033[34m'
+COLOR_RED='\033[31m'
+
+# Get script name (matryoshka or mshka)
+SCRIPT_NAME=$(basename "$0")
+
+# Project root
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Print usage
+usage() {
+    echo -e "${COLOR_BLUE}MatryoshkaOS Build System${COLOR_RESET}"
+    echo ""
+    echo -e "${COLOR_GREEN}Usage:${COLOR_RESET} $SCRIPT_NAME <command>"
+    echo ""
+    echo -e "${COLOR_GREEN}Commands:${COLOR_RESET}"
+    echo "  build              Build kernel"
+    echo "  clean              Clean build artifacts"
+    echo "  iso                Create bootable ISO image"
+    echo "  run                Run in QEMU"
+    echo "  run-iso            Run ISO in QEMU"
+    echo "  run-vmware         Create VMware image"
+    echo "  debug              Run with GDB debugger"
+    echo "  test-unit          Run unit tests"
+    echo "  test-integration   Run integration tests"
+    echo "  test-system        Run system tests"
+    echo "  test-all           Run all tests"
+    echo "  coverage           Generate coverage report"
+    echo "  info               Show kernel information"
+    echo "  help               Show this help"
+    echo ""
+    echo -e "${COLOR_YELLOW}Note:${COLOR_RESET} Both 'matryoshka' and 'mshka' commands work identically"
+}
+
+# Execute command
+case "$1" in
+    build)
+        cd "$PROJECT_ROOT"
+        make all
+        ;;
+    clean)
+        cd "$PROJECT_ROOT"
+        make clean
+        ;;
+    iso)
+        cd "$PROJECT_ROOT"
+        make iso
+        ;;
+    run)
+        cd "$PROJECT_ROOT"
+        make run
+        ;;
+    run-iso)
+        cd "$PROJECT_ROOT"
+        make run-iso
+        ;;
+    run-vmware)
+        cd "$PROJECT_ROOT"
+        make run-vmware
+        ;;
+    debug)
+        cd "$PROJECT_ROOT"
+        make debug
+        ;;
+    test-unit)
+        cd "$PROJECT_ROOT"
+        make test-unit
+        ;;
+    test-integration)
+        cd "$PROJECT_ROOT"
+        make test-integration
+        ;;
+    test-system)
+        cd "$PROJECT_ROOT"
+        make test-system
+        ;;
+    test-all)
+        cd "$PROJECT_ROOT"
+        make test-all
+        ;;
+    coverage)
+        cd "$PROJECT_ROOT"
+        make coverage
+        ;;
+    info)
+        cd "$PROJECT_ROOT"
+        make info
+        ;;
+    help|--help|-h)
+        usage
+        ;;
+    "")
+        echo -e "${COLOR_RED}Error: No command specified${COLOR_RESET}"
+        echo ""
+        usage
+        exit 1
+        ;;
+    *)
+        echo -e "${COLOR_RED}Error: Unknown command '$1'${COLOR_RESET}"
+        echo ""
+        usage
+        exit 1
+        ;;
+esac
+

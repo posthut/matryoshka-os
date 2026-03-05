@@ -1,0 +1,49 @@
+# Build artifacts
+build/
+*.o
+*.elf
+*.bin
+*.iso
+
+# ISO building
+iso/isofiles/
+
+# Test artifacts
+*.pyc
+__pycache__/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Coverage reports
+*.gcov
+*.gcda
+*.gcno
+coverage.html
+coverage/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Backup files
+*.bak
+*.tmp
+
+# Session files (QEMU, VMware)
+*.qcow2
+*.vmdk
+*.vmx
+*.nvram
+
+# Debian rootfs build
+rootfs/rootfs/
+rootfs/*.tar.gz
+

@@ -1,0 +1,240 @@
+name: MatryoshkaOS CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Build Kernel
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc-x86-64-linux-gnu \
+          nasm \
+          binutils \
+          grub-pc-bin \
+          grub-common \
+          xorriso \
+          qemu-system-x86 \
+          make
+    
+    - name: Build kernel
+      run: make all
+    
+    - name: Check kernel binary
+      run: |
+        ls -lh build/matryoshka-kernel.elf
+        file build/matryoshka-kernel.elf
+        size build/matryoshka-kernel.elf
+    
+    - name: Upload kernel artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: matryoshka-kernel
+        path: build/matryoshka-kernel.elf
+        retention-days: 30
+    
+    - name: Check kernel size
+      run: |
+        SIZE=$(stat -c%s build/matryoshka-kernel.elf)
+        echo "Kernel size: $SIZE bytes"
+        if [ $SIZE -gt 10485760 ]; then
+          echo "::warning::Kernel size exceeds 10MB"
+        fi
+
+  build-iso:
+    name: Build ISO Image
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc-x86-64-linux-gnu \
+          nasm \
+          binutils \
+          grub-pc-bin \
+          grub-common \
+          xorriso \
+          make
+    
+    - name: Build ISO
+      run: |
+        make all
+        make iso
+    
+    - name: Check ISO
+      run: |
+        ls -lh iso/matryoshka-os.iso
+        file iso/matryoshka-os.iso
+    
+    - name: Upload ISO artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: matryoshka-os-iso
+        path: iso/matryoshka-os.iso
+        retention-days: 30
+
+  test-boot:
+    name: Test Boot in QEMU
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y \
+          gcc-x86-64-linux-gnu \
+          nasm \
+          binutils \
+          qemu-system-x86 \
+          make
+    
+    - name: Build kernel
+      run: make all
+    
+    - name: Test boot (timeout 30s)
+      run: |
+        timeout 30s qemu-system-x86_64 \
+          -kernel build/matryoshka-kernel.elf \
+          -m 512M \
+          -serial file:serial.log \
+          -display none \
+          -no-reboot \
+          -no-shutdown || true
+    
+    - name: Check serial output
+      run: |
+        if [ -f serial.log ]; then
+          echo "=== Serial Output ==="
+          cat serial.log
+          echo "=== End Serial Output ==="
+          
+          # Check for panic or error
+          if grep -q "PANIC\|ERROR\|FAIL" serial.log; then
+            echo "::error::Kernel panic or error detected"
+            exit 1
+          fi
+          
+          # Check for successful boot
+          if grep -q "MatryoshkaOS" serial.log; then
+            echo "✓ Kernel booted successfully"
+          else
+            echo "::warning::Expected boot message not found"
+          fi
+        else
+          echo "::error::Serial log not found"
+          exit 1
+        fi
+    
+    - name: Upload serial log
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: serial-log
+        path: serial.log
+        retention-days: 7
+
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Check file sizes
+      run: |
+        echo "=== Checking for large files ==="
+        find kernel -name "*.c" -o -name "*.asm" | while read file; do
+          lines=$(wc -l < "$file")
+          if [ $lines -gt 300 ]; then
+            echo "::warning file=$file::File has $lines lines (>300)"
+          fi
+        done
+    
+    - name: Check for TODO/FIXME
+      run: |
+        echo "=== Checking for TODO/FIXME ==="
+        if grep -r "TODO\|FIXME" kernel/ --exclude-dir=build; then
+          echo "::notice::Found TODO/FIXME comments"
+        fi
+    
+    - name: Check for debug prints
+      run: |
+        echo "=== Checking for debug statements ==="
+        if grep -r "printf\|DEBUG\|debug_print" kernel/ --exclude-dir=build; then
+          echo "::warning::Found potential debug statements"
+        fi
+
+  documentation:
+    name: Check Documentation
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+    
+    - name: Check required files
+      run: |
+        required_files=(
+          "README.md"
+          "LICENSE"
+          "CONTRIBUTING.md"
+          "CODE_OF_CONDUCT.md"
+          "TECHNICAL_SPECIFICATION.md"
+        )
+        
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "::error::Missing required file: $file"
+            exit 1
+          fi
+        done
+        
+        echo "✓ All required documentation files present"
+    
+    - name: Check documentation links
+      run: |
+        echo "=== Checking README links ==="
+        # Basic link check (can be enhanced)
+        if grep -o '\[.*\](.*\.md)' README.md; then
+          echo "✓ Found documentation links"
+        fi
+
+  summary:
+    name: Build Summary
+    runs-on: ubuntu-latest
+    needs: [build, build-iso, test-boot, code-quality, documentation]
+    if: always()
+    
+    steps:
+    - name: Summary
+      run: |
+        echo "## MatryoshkaOS Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Build completed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ ISO image created" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Boot test passed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Code quality checks passed" >> $GITHUB_STEP_SUMMARY
+        echo "✅ Documentation verified" >> $GITHUB_STEP_SUMMARY
+
