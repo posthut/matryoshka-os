@@ -170,3 +170,12 @@ void vga_update_cursor(uint8_t x, uint8_t y) {
     outb(0x3D5, (uint8_t)((pos >> 8) & 0xFF));
 }
 
+/**
+ * Set cursor position (and move write position)
+ */
+void vga_set_cursor_pos(uint8_t x, uint8_t y) {
+    vga_cursor_x = x;
+    vga_cursor_y = y;
+    vga_update_cursor(x, y);
+}
+

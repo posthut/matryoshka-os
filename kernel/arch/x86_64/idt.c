@@ -206,6 +206,10 @@ void idt_init(void) {
     idt_set_gate(46, (uint32_t)irq14, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
     idt_set_gate(47, (uint32_t)irq15, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
     
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_puts("  About to load IDT with LIDT instruction...\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    
     // Load IDT
     __asm__ volatile("lidt %0" : : "m"(idt_ptr));
     

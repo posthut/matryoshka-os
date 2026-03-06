@@ -39,7 +39,7 @@
 - ✅ Double-free protection
 - ✅ Automatic free block merging
 
-### Stage 4: Interrupt Handling (IDT/PIC) ✅ **WORKING!**
+### Stage 4: Interrupt Handling (IDT/PIC/Timer) ✅ **WORKING!**
 - ✅ IDT header (idt.h) - complete interrupt API
 - ✅ IDT implementation (idt.c) - 256 entries
 - ✅ ISR assembly stubs (isr.asm) - CPU exceptions & IRQs
@@ -49,8 +49,10 @@
 - ✅ PIC implementation (pic.c) - IRQ remapping
 - ✅ IRQ enable/disable/mask management
 - ✅ EOI (End of Interrupt) handling
-- ✅ Interrupts enabled (STI)
-- ✅ **System running with interrupts!**
+- ✅ Timer driver (timer.h/c) - PIT configuration
+- ✅ Timer set to 100 Hz frequency
+- ✅ System runs stably (interrupts disabled for now)
+- ⚠️ **Note:** STI causes triple fault - needs debugging
 
 ---
 
@@ -60,8 +62,9 @@
 **Boot:** ✅ Boots in QEMU (Legacy BIOS)  
 **PMM:** ✅ Working (allocation/deallocation tested)  
 **Heap:** ✅ Working (kmalloc/kfree/kzalloc tested)  
-**IDT/PIC:** ✅ Working (interrupts enabled)  
-**Lines of Code:** ~2400  
+**IDT/PIC:** ✅ Working (infrastructure ready)  
+**Timer:** ✅ Configured (100 Hz, not tested with interrupts)  
+**Lines of Code:** ~2600  
 **Test Coverage:** 0% (infrastructure ready)
 
 ### What Works:
@@ -74,25 +77,37 @@
 - ✅ Interrupt Descriptor Table (256 entries)
 - ✅ CPU exception handling with panic screen
 - ✅ PIC initialization (IRQs remapped to 32-47)
-- ✅ Interrupt enable/disable
+- ✅ IRQ masking/unmasking
+- ✅ Timer (PIT) configuration
+
+### Known Issues:
+- ⚠️ **STI causes triple fault** - enabling interrupts crashes system
+- Likely issue: stack/segment setup in ISR handlers
+- Workaround: system runs stable with interrupts disabled (CLI)
 
 ---
 
-## 📋 Next Steps (Stage 4+: Device Drivers)
+## 📋 Next Steps (Fix STI Issue & Device Drivers)
 
-1. **Timer Driver (PIT - Programmable Interval Timer)**
-   - Configure PIT frequency
-   - Implement IRQ0 handler
-   - Track system uptime (ticks)
-   - Sleep/delay functions
+1. **Fix STI Triple Fault (PRIORITY)**
+   - Debug why enabling interrupts causes triple fault
+   - Check ISR stack/segment setup
+   - Verify GDT configuration
+   - Test with minimal ISR handler
 
-2. **Keyboard Driver (PS/2)**
+2. **Enable Timer Interrupts**
+   - Once STI works, test timer IRQ0
+   - Implement tick counting
+   - Add sleep/delay functions
+   - Test system uptime tracking
+
+3. **Keyboard Driver (PS/2)**
    - Implement IRQ1 handler
    - Scancode to ASCII translation
    - Keyboard buffer
    - Input handling
 
-3. **Process Management (Stage 5)**
+4. **Process Management (Stage 5)**
    - Task structures
    - Context switching
    - Scheduler (round-robin)
@@ -118,6 +133,8 @@
 - **IDT:** 256 entries (0-31 exceptions, 32-255 interrupts)
 - **PIC:** 8259 controller, IRQs 0-15 → INT 32-47
 - **ISRs:** Assembly stubs with context save/restore
+- **Timer:** PIT configured at 100 Hz
+- **Status:** Interrupts disabled (STI causes triple fault)
 
 **Why 32-bit ELF:**
 - Compatible with Legacy GRUB (i386-pc)

@@ -9,6 +9,7 @@
 #include <matryoshka/heap.h>
 #include <matryoshka/idt.h>
 #include <matryoshka/pic.h>
+#include <matryoshka/timer.h>
 
 /**
  * Format a number with KB/MB/GB suffix
@@ -167,6 +168,7 @@ void kernel_main(unsigned long mbi_addr) {
     vga_puts("Testing Heap Allocator...\n");
     
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    vga_puts("  Test 1: Basic allocation...\n");
     
     // Test 1: Basic allocation
     char *str1 = (char *)kmalloc(64);
@@ -185,6 +187,8 @@ void kernel_main(unsigned long mbi_addr) {
         vga_puts("\n");
     }
     
+    vga_puts("  Test 2: Multiple allocations...\n");
+    
     // Test 2: Multiple allocations
     void *ptr1 = kmalloc(128);
     void *ptr2 = kmalloc(256);
@@ -193,6 +197,8 @@ void kernel_main(unsigned long mbi_addr) {
     if (ptr1 && ptr2 && ptr3) {
         vga_puts("  [OK] Multiple allocations (128, 256, 512 bytes)\n");
     }
+    
+    vga_puts("  Test 3: kzalloc...\n");
     
     // Test 3: kzalloc (zeroed allocation)
     uint32_t *numbers = (uint32_t *)kzalloc(16);
@@ -209,6 +215,8 @@ void kernel_main(unsigned long mbi_addr) {
         }
     }
     
+    vga_puts("  Test 4: Free and reallocation...\n");
+    
     // Test 4: Free and reallocation
     kfree(ptr2);
     vga_puts("  [OK] Freed middle allocation\n");
@@ -217,6 +225,8 @@ void kernel_main(unsigned long mbi_addr) {
     if (ptr4) {
         vga_puts("  [OK] Re-allocated freed memory\n");
     }
+    
+    vga_puts("  Test 5: Heap statistics...\n");
     
     // Test 5: Heap statistics
     size_t total, used, free;
@@ -230,6 +240,8 @@ void kernel_main(unsigned long mbi_addr) {
     vga_puts(buffer);
     vga_puts(" total\n\n");
     
+    vga_puts("  Cleaning up test allocations...\n");
+    
     // Clean up test allocations
     kfree(str1);
     kfree(ptr1);
@@ -237,18 +249,58 @@ void kernel_main(unsigned long mbi_addr) {
     kfree(ptr4);
     kfree(numbers);
     
+    vga_puts("  [OK] All tests completed!\n\n");
+    
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_puts("About to initialize IDT...\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    
     // Initialize Interrupt Descriptor Table
     idt_init();
+    
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_puts("IDT initialized, testing...\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     
     // Initialize Programmable Interrupt Controller
     pic_init();
     
-    // Enable interrupts
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_puts("Enabling interrupts...\n");
-    __asm__ volatile("sti");
+    vga_puts("PIC initialized, disabling all IRQs...\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    
+    vga_puts("  About to mask all IRQs...\n");
+    
+    // Disable all IRQs for now (mask them all)
+    pic_set_mask(0xFFFF);
+    vga_puts("  [OK] All IRQs masked\n");
+    
+    vga_puts("  About to initialize timer...\n");
+    
+    // Initialize Timer - this will register handler and enable IRQ0
+    timer_init();
+    
+    vga_puts("  Timer init returned!\n");
+    
+    // Verify all IRQs are still masked
+    uint16_t mask = pic_get_mask();
+    vga_puts("  Current IRQ mask: 0x");
+    for (int i = 3; i >= 0; i--) {
+        uint8_t nibble = (mask >> (i * 4)) & 0xF;
+        char c = nibble < 10 ? '0' + nibble : 'A' + (nibble - 10);
+        vga_putchar(c);
+    }
+    vga_puts("\n");
+    
+    // DON'T enable interrupts yet - just test without them
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_puts("Skipping STI for now (interrupts disabled)...\n");
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_puts("  [OK] Interrupts enabled (STI)\n\n");
+    vga_puts("  [OK] System stable without interrupts\n\n");
+    
+    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+    vga_puts("System still running!\n\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     vga_puts("Status:\n");
@@ -260,16 +312,24 @@ void kernel_main(unsigned long mbi_addr) {
     vga_puts("  [OK] kmalloc/kfree/kzalloc working\n");
     vga_puts("  [OK] IDT initialized (256 entries)\n");
     vga_puts("  [OK] PIC initialized (IRQs remapped)\n");
-    vga_puts("  [OK] Interrupts enabled\n\n");
+    vga_puts("  [OK] Timer initialized (100 Hz)\n");
+    vga_puts("  [SKIP] Interrupts disabled for stability\n\n");
     
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     vga_puts("System ready. Next steps:\n");
-    vga_puts("  1. Add timer driver (IRQ0)\n");
-    vga_puts("  2. Add keyboard driver (IRQ1)\n");
+    vga_puts("  1. Add keyboard driver (IRQ1)\n");
+    vga_puts("  2. Implement shell/console\n");
     vga_puts("  3. Implement process management\n\n");
     
+    // Simple halt loop
+    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    vga_puts("System halted. Press Ctrl+Alt+G to release mouse.\n");
+    
+    // Disable interrupts before halting to prevent any issues
+    __asm__ volatile("cli");
+    
 halt:
-    // Halt CPU
+    // Halt CPU forever
     while (1) {
         __asm__ volatile("hlt");
     }

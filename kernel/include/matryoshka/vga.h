@@ -78,5 +78,10 @@ void vga_enable_cursor(bool enable);
  */
 void vga_update_cursor(uint8_t x, uint8_t y);
 
+/**
+ * Set cursor position (and move write position)
+ */
+void vga_set_cursor_pos(uint8_t x, uint8_t y);
+
 #endif // MATRYOSHKA_VGA_H
 
