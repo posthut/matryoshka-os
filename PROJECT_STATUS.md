@@ -1,7 +1,8 @@
 # MatryoshkaOS - Project Status
 
 **Created:** March 5, 2026  
-**Current Stage:** Stage 4 - Interrupt Handling (IDT/PIC) ✅ **WORKING!**
+**Updated:** March 6, 2026  
+**Current Stage:** Stage 4+ - Interrupts Enabled, Timer Running ✅ **WORKING!**
 
 ---
 
@@ -51,8 +52,9 @@
 - ✅ EOI (End of Interrupt) handling
 - ✅ Timer driver (timer.h/c) - PIT configuration
 - ✅ Timer set to 100 Hz frequency
-- ✅ System runs stably (interrupts disabled for now)
-- ⚠️ **Note:** STI causes triple fault - needs debugging
+- ✅ GDT module (gdt.h/c) - flat 32-bit segments
+- ✅ **Interrupts enabled (STI) - system stable!**
+- ✅ Timer ticks counting, sleep functions working
 
 ---
 
@@ -62,14 +64,17 @@
 **Boot:** ✅ Boots in QEMU (Legacy BIOS)  
 **PMM:** ✅ Working (allocation/deallocation tested)  
 **Heap:** ✅ Working (kmalloc/kfree/kzalloc tested)  
-**IDT/PIC:** ✅ Working (infrastructure ready)  
-**Timer:** ✅ Configured (100 Hz, not tested with interrupts)  
-**Lines of Code:** ~2600  
+**GDT:** ✅ Own GDT loaded, segments reloaded  
+**IDT/PIC:** ✅ Working (exceptions + IRQs)  
+**Timer:** ✅ Running (100 Hz, tick counting active)  
+**Interrupts:** ✅ Enabled (STI) — stable!  
+**Lines of Code:** ~2800  
 **Test Coverage:** 0% (infrastructure ready)
 
 ### What Works:
 - ✅ GRUB2 Multiboot2 boot
 - ✅ VGA text mode (color output)
+- ✅ GDT with flat 32-bit segments (code 0x08, data 0x10)
 - ✅ Physical memory detection
 - ✅ Frame allocator (bitmap-based)
 - ✅ Heap allocator (linked-list based)
@@ -78,30 +83,19 @@
 - ✅ CPU exception handling with panic screen
 - ✅ PIC initialization (IRQs remapped to 32-47)
 - ✅ IRQ masking/unmasking
-- ✅ Timer (PIT) configuration
+- ✅ Timer (PIT) at 100 Hz with tick counting
+- ✅ Interrupts enabled — system runs with STI
+- ✅ timer_sleep_ms() / timer_get_ticks() working
 
 ### Known Issues:
-- ⚠️ **STI causes triple fault** - enabling interrupts crashes system
-- Likely issue: stack/segment setup in ISR handlers
-- Workaround: system runs stable with interrupts disabled (CLI)
+- No known critical issues
+- VMM (vmm.c) uses 64-bit registers — needs rework for 32-bit mode
 
 ---
 
-## 📋 Next Steps (Fix STI Issue & Device Drivers)
+## 📋 Next Steps (Device Drivers & Process Management)
 
-1. **Fix STI Triple Fault (PRIORITY)**
-   - Debug why enabling interrupts causes triple fault
-   - Check ISR stack/segment setup
-   - Verify GDT configuration
-   - Test with minimal ISR handler
-
-2. **Enable Timer Interrupts**
-   - Once STI works, test timer IRQ0
-   - Implement tick counting
-   - Add sleep/delay functions
-   - Test system uptime tracking
-
-3. **Keyboard Driver (PS/2)**
+1. **Keyboard Driver (PS/2)**
    - Implement IRQ1 handler
    - Scancode to ASCII translation
    - Keyboard buffer
@@ -130,11 +124,12 @@
 - **Heap:** Dynamic kernel memory (1MB heap @ 0x200000)
 
 **Interrupt Handling:**
-- **IDT:** 256 entries (0-31 exceptions, 32-255 interrupts)
+- **GDT:** 3 entries (null, code 0x08, data 0x10) — flat 32-bit
+- **IDT:** 256 entries (0-31 exceptions, 32-47 IRQs, rest not-present)
 - **PIC:** 8259 controller, IRQs 0-15 → INT 32-47
 - **ISRs:** Assembly stubs with context save/restore
-- **Timer:** PIT configured at 100 Hz
-- **Status:** Interrupts disabled (STI causes triple fault)
+- **Timer:** PIT configured at 100 Hz, tick counting active
+- **Status:** Interrupts enabled (STI) — stable
 
 **Why 32-bit ELF:**
 - Compatible with Legacy GRUB (i386-pc)

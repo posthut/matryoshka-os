@@ -1,5 +1,7 @@
 ; MatryoshkaOS - Minimal Kernel Entry Point
-; 32-bit to 64-bit transition test
+; 32-bit protected mode boot
+
+section .note.GNU-stack noalloc noexec nowrite progbits
 
 ; Multiboot2 header
 section .multiboot
@@ -52,6 +54,23 @@ _start:
 .hang:
     hlt
     jmp .hang
+
+; GDT flush — load new GDT and reload every segment register
+section .text
+global gdt_flush
+gdt_flush:
+    mov eax, [esp + 4]
+    lgdt [eax]
+
+    jmp 0x08:.reload_cs
+.reload_cs:
+    mov ax, 0x10
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
+    ret
 
 ; BSS section for stack
 section .bss

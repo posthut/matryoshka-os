@@ -1,6 +1,8 @@
 ; MatryoshkaOS - Interrupt Service Routines (ISR)
 ; Assembly stubs for CPU exceptions and hardware interrupts
 
+section .note.GNU-stack noalloc noexec nowrite progbits
+
 section .text
 
 ; Macro for ISRs without error code

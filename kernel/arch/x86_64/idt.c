@@ -4,6 +4,7 @@
  */
 
 #include <matryoshka/idt.h>
+#include <matryoshka/pic.h>
 #include <matryoshka/vga.h>
 
 // IDT entries array
@@ -125,15 +126,12 @@ static void default_exception_handler(interrupt_frame_t *frame) {
  * Common interrupt handler (called from assembly)
  */
 void isr_handler(interrupt_frame_t *frame) {
-    // Check if we have a custom handler
     if (interrupt_handlers[frame->int_no] != NULL) {
         interrupt_handlers[frame->int_no](frame);
-    } else {
-        // Default exception handler
-        if (frame->int_no < 32) {
-            default_exception_handler(frame);
-        }
-        // For IRQs without handlers, just ignore
+    } else if (frame->int_no < 32) {
+        default_exception_handler(frame);
+    } else if (frame->int_no >= 32 && frame->int_no < 48) {
+        pic_send_eoi(frame->int_no - 32);
     }
 }
 
@@ -144,9 +142,13 @@ void idt_init(void) {
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     vga_puts("Initializing IDT...\n");
     
-    // Clear IDT and handlers
+    // Clear IDT (all entries not-present) and handlers
     for (int i = 0; i < IDT_ENTRIES; i++) {
-        idt_set_gate(i, 0, 0, 0);
+        idt[i].base_low  = 0;
+        idt[i].base_high = 0;
+        idt[i].selector  = 0;
+        idt[i].zero      = 0;
+        idt[i].flags     = 0;
         interrupt_handlers[i] = NULL;
     }
     

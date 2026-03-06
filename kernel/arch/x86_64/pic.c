@@ -30,10 +30,6 @@ void pic_init(void) {
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     vga_puts("Initializing PIC...\n");
     
-    // Save masks
-    uint8_t mask1 = inb(PIC1_DATA);
-    uint8_t mask2 = inb(PIC2_DATA);
-    
     // Start initialization sequence (ICW1)
     outb(PIC1_COMMAND, ICW1_INIT | ICW1_ICW4);
     io_wait();
@@ -58,9 +54,9 @@ void pic_init(void) {
     outb(PIC2_DATA, ICW4_8086);
     io_wait();
     
-    // Restore saved masks
-    outb(PIC1_DATA, mask1);
-    outb(PIC2_DATA, mask2);
+    // Mask all IRQs (drivers will selectively enable what they need)
+    outb(PIC1_DATA, 0xFF);
+    outb(PIC2_DATA, 0xFF);
     
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_puts("  [OK] PIC remapped (IRQ 0-15 -> INT 32-47)\n");

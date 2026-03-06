@@ -4,6 +4,7 @@
  */
 
 #include <matryoshka/vga.h>
+#include <matryoshka/gdt.h>
 #include <matryoshka/multiboot2.h>
 #include <matryoshka/pmm.h>
 #include <matryoshka/heap.h>
@@ -90,6 +91,9 @@ void kernel_main(unsigned long mbi_addr) {
     vga_puts("  - Architecture: x86_64\n");
     vga_puts("  - Bootloader: GRUB2 Multiboot2\n");
     vga_puts("  - VGA Mode: 80x25 text mode\n\n");
+    
+    // Setup own GDT before touching memory that might overlap GRUB's GDT
+    gdt_init();
     
     // Check if we received Multiboot info
     if (mbi_addr == 0) {
@@ -265,55 +269,46 @@ void kernel_main(unsigned long mbi_addr) {
     // Initialize Programmable Interrupt Controller
     pic_init();
     
-    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_puts("PIC initialized, disabling all IRQs...\n");
-    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    
-    vga_puts("  About to mask all IRQs...\n");
-    
-    // Disable all IRQs for now (mask them all)
-    pic_set_mask(0xFFFF);
-    vga_puts("  [OK] All IRQs masked\n");
-    
-    vga_puts("  About to initialize timer...\n");
-    
-    // Initialize Timer - this will register handler and enable IRQ0
+    // Initialize Timer (registers IRQ0 handler and unmasks IRQ0)
     timer_init();
     
-    vga_puts("  Timer init returned!\n");
+    // Enable interrupts — GDT, IDT, PIC and timer are all set up
+    __asm__ volatile("sti");
     
-    // Verify all IRQs are still masked
-    uint16_t mask = pic_get_mask();
-    vga_puts("  Current IRQ mask: 0x");
-    for (int i = 3; i >= 0; i--) {
-        uint8_t nibble = (mask >> (i * 4)) & 0xF;
-        char c = nibble < 10 ? '0' + nibble : 'A' + (nibble - 10);
-        vga_putchar(c);
-    }
-    vga_puts("\n");
-    
-    // DON'T enable interrupts yet - just test without them
-    vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_puts("Skipping STI for now (interrupts disabled)...\n");
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_puts("  [OK] System stable without interrupts\n\n");
+    vga_puts("  [OK] Interrupts enabled (STI)\n\n");
     
+    // Let a few timer ticks accumulate to prove interrupts work
+    timer_sleep_ms(50);
+    
+    uint64_t ticks = timer_get_ticks();
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
-    vga_puts("System still running!\n\n");
-    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    vga_puts("Timer test: ");
+    char tick_buf[12];
+    int pos = 0;
+    uint64_t t = ticks;
+    if (t == 0) {
+        tick_buf[pos++] = '0';
+    } else {
+        char tmp[12];
+        int len = 0;
+        while (t > 0) { tmp[len++] = '0' + (t % 10); t /= 10; }
+        for (int i = len - 1; i >= 0; i--) tick_buf[pos++] = tmp[i];
+    }
+    tick_buf[pos] = '\0';
+    vga_puts(tick_buf);
+    vga_puts(" ticks counted - interrupts working!\n\n");
     
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     vga_puts("Status:\n");
+    vga_puts("  [OK] GDT loaded\n");
     vga_puts("  [OK] VGA driver initialized\n");
-    vga_puts("  [OK] Kernel running in 32-bit protected mode\n");
     vga_puts("  [OK] Physical Memory Manager initialized\n");
-    vga_puts("  [OK] PMM allocation/deallocation working\n");
     vga_puts("  [OK] Heap Allocator initialized\n");
-    vga_puts("  [OK] kmalloc/kfree/kzalloc working\n");
     vga_puts("  [OK] IDT initialized (256 entries)\n");
     vga_puts("  [OK] PIC initialized (IRQs remapped)\n");
-    vga_puts("  [OK] Timer initialized (100 Hz)\n");
-    vga_puts("  [SKIP] Interrupts disabled for stability\n\n");
+    vga_puts("  [OK] Timer running (100 Hz)\n");
+    vga_puts("  [OK] Interrupts enabled\n\n");
     
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     vga_puts("System ready. Next steps:\n");
@@ -321,15 +316,10 @@ void kernel_main(unsigned long mbi_addr) {
     vga_puts("  2. Implement shell/console\n");
     vga_puts("  3. Implement process management\n\n");
     
-    // Simple halt loop
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    vga_puts("System halted. Press Ctrl+Alt+G to release mouse.\n");
-    
-    // Disable interrupts before halting to prevent any issues
-    __asm__ volatile("cli");
+    vga_puts("System idle. Press Ctrl+Alt+G to release mouse.\n");
     
 halt:
-    // Halt CPU forever
     while (1) {
         __asm__ volatile("hlt");
     }
