@@ -11,6 +11,7 @@
 #include <matryoshka/idt.h>
 #include <matryoshka/pic.h>
 #include <matryoshka/timer.h>
+#include <matryoshka/keyboard.h>
 
 /**
  * Format a number with KB/MB/GB suffix
@@ -299,27 +300,35 @@ void kernel_main(unsigned long mbi_addr) {
     vga_puts(tick_buf);
     vga_puts(" ticks counted - interrupts working!\n\n");
     
+    // Initialize PS/2 Keyboard (IRQ1)
+    keyboard_init();
+    
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
-    vga_puts("Status:\n");
-    vga_puts("  [OK] GDT loaded\n");
-    vga_puts("  [OK] VGA driver initialized\n");
-    vga_puts("  [OK] Physical Memory Manager initialized\n");
-    vga_puts("  [OK] Heap Allocator initialized\n");
-    vga_puts("  [OK] IDT initialized (256 entries)\n");
-    vga_puts("  [OK] PIC initialized (IRQs remapped)\n");
-    vga_puts("  [OK] Timer running (100 Hz)\n");
-    vga_puts("  [OK] Interrupts enabled\n\n");
+    vga_puts("All subsystems initialized. Type below:\n\n");
     
-    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
-    vga_puts("System ready. Next steps:\n");
-    vga_puts("  1. Add keyboard driver (IRQ1)\n");
-    vga_puts("  2. Implement shell/console\n");
-    vga_puts("  3. Implement process management\n\n");
-    
+    // Interactive prompt — echo keyboard input
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_puts("mshka> ");
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    vga_puts("System idle. Press Ctrl+Alt+G to release mouse.\n");
+    
+    while (1) {
+        char c = keyboard_getchar();
+        if (c == '\n') {
+            vga_putchar('\n');
+            vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+            vga_puts("mshka> ");
+            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+        } else if (c == '\b') {
+            vga_putchar('\b');
+            vga_putchar(' ');
+            vga_putchar('\b');
+        } else if (c >= ' ' && c <= '~') {
+            vga_putchar(c);
+        }
+    }
     
 halt:
+    __asm__ volatile("cli");
     while (1) {
         __asm__ volatile("hlt");
     }

@@ -68,7 +68,8 @@
 **IDT/PIC:** ✅ Working (exceptions + IRQs)  
 **Timer:** ✅ Running (100 Hz, tick counting active)  
 **Interrupts:** ✅ Enabled (STI) — stable!  
-**Lines of Code:** ~2800  
+**Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
+**Lines of Code:** ~3000  
 **Test Coverage:** 0% (infrastructure ready)
 
 ### What Works:
@@ -86,6 +87,8 @@
 - ✅ Timer (PIT) at 100 Hz with tick counting
 - ✅ Interrupts enabled — system runs with STI
 - ✅ timer_sleep_ms() / timer_get_ticks() working
+- ✅ PS/2 keyboard with Shift/Ctrl/Alt/CapsLock support
+- ✅ Interactive prompt (`mshka>`) with keyboard echo
 
 ### Known Issues:
 - No known critical issues
@@ -93,13 +96,21 @@
 
 ---
 
-## 📋 Next Steps (Device Drivers & Process Management)
+### Stage 4+: Keyboard Driver (PS/2) ✅
+- ✅ PS/2 keyboard driver (keyboard.h/c)
+- ✅ IRQ1 handler with scancode-to-ASCII translation (Set 1, US QWERTY)
+- ✅ Circular key buffer (256 bytes)
+- ✅ Modifier tracking (Shift, Ctrl, Alt, Caps Lock)
+- ✅ Interactive prompt with keyboard echo (`mshka>`)
 
-1. **Keyboard Driver (PS/2)**
-   - Implement IRQ1 handler
-   - Scancode to ASCII translation
-   - Keyboard buffer
-   - Input handling
+---
+
+## 📋 Next Steps (Shell & Process Management)
+
+1. **Shell / Console**
+   - Command parsing and execution
+   - Built-in commands (help, clear, meminfo, uptime)
+   - Command history
 
 4. **Process Management (Stage 5)**
    - Task structures
@@ -150,7 +161,7 @@
 - [ ] Stage 3.2: VMM (Virtual Memory Manager) - *deferred*
 - [x] Stage 3.3: Heap allocator
 - [x] Stage 4: Interrupt handling (IDT/PIC)
-- [ ] Stage 4+: Device drivers (Timer, Keyboard)
+- [x] Stage 4+: Device drivers (Timer, Keyboard)
 - [ ] Stage 5: Process management
 - [ ] Stage 6: Filesystem
 - [ ] Stage 7: System calls
