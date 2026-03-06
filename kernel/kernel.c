@@ -70,14 +70,14 @@ static void format_memory_size(uint64_t bytes, char *buffer) {
     }
 }
 
-/* Demo tasks for multitasking demonstration */
+/* Demo tasks — preempted by timer, no explicit yield needed */
 static void demo_task_a(void) {
     for (int i = 0; i < 5; i++) {
         vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
         vga_puts("[Task A] tick ");
         vga_putchar('0' + i);
         vga_putchar('\n');
-        task_yield();
+        timer_sleep_ms(80);
     }
 }
 
@@ -87,7 +87,7 @@ static void demo_task_b(void) {
         vga_puts("[Task B] tock ");
         vga_putchar('0' + i);
         vga_putchar('\n');
-        task_yield();
+        timer_sleep_ms(80);
     }
 }
 
@@ -335,12 +335,11 @@ void kernel_main(unsigned long mbi_addr) {
     task_create(demo_task_b, "demo_b");
     
     vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
-    vga_puts("Running multitasking demo...\n");
+    vga_puts("Running preemptive multitasking demo...\n");
     vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
     
-    // Yield to let demo tasks run (they yield back and forth)
-    for (int i = 0; i < 12; i++)
-        task_yield();
+    // Sleep while demo tasks are preemptively scheduled
+    timer_sleep_ms(1000);
     
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_puts("Demo complete. Entering shell.\n\n");

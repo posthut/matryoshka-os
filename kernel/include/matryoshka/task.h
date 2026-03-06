@@ -1,6 +1,6 @@
 /**
  * MatryoshkaOS - Kernel Task (Thread) Management
- * Cooperative multitasking for ring-0 kernel threads
+ * Preemptive multitasking for ring-0 kernel threads
  */
 
 #ifndef MATRYOSHKA_TASK_H
@@ -18,8 +18,8 @@ typedef enum {
 } task_state_t;
 
 /**
- * Register the current (boot) thread as task 0 ("kernel").
- * Must be called before task_create().
+ * Register the current (boot) thread as task 0 and enable
+ * the scheduler.  Must be called after idt_init().
  */
 void task_init(void);
 
@@ -30,24 +30,33 @@ void task_init(void);
 uint32_t task_create(void (*entry)(void), const char *name);
 
 /**
- * Voluntarily give up the CPU.
- * If no other READY task exists, performs HLT and returns.
+ * Voluntarily give up the CPU (triggers INT 0x81).
  */
 void task_yield(void);
 
 /**
- * Terminate the current task. Called automatically when a task's
+ * Terminate the current task.  Called automatically when a task's
  * entry function returns.  Never returns.
  */
 void task_exit(void);
 
+/**
+ * Request the scheduler to run at the next opportunity
+ * (typically called from the timer IRQ handler).
+ */
+void task_request_reschedule(void);
+
+/**
+ * Called from isr_handler after every interrupt.
+ * If a reschedule is pending, saves the current ESP and returns
+ * the next task's ESP; otherwise returns @a esp unchanged.
+ */
+uint32_t task_schedule_if_needed(uint32_t esp);
+
+/* Query helpers */
 uint32_t task_count(void);
 uint32_t task_current_id(void);
 bool     task_get_info(uint32_t index, uint32_t *id,
                        const char **name, task_state_t *state);
-
-/* Assembly helpers (context.asm) */
-extern void context_switch(uint32_t *old_esp, uint32_t new_esp);
-extern void task_entry_trampoline(void);
 
 #endif /* MATRYOSHKA_TASK_H */

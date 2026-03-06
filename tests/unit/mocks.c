@@ -21,3 +21,11 @@ void vga_scroll(void)                                     {}
 void vga_enable_cursor(bool e)                            { (void)e; }
 void vga_update_cursor(uint8_t x, uint8_t y)             { (void)x; (void)y; }
 void vga_set_cursor_pos(uint8_t x, uint8_t y)            { (void)x; (void)y; }
+
+/* ── IDT stubs ───────────────────────────────────────────────────── */
+
+#include <matryoshka/idt.h>
+
+void idt_register_handler(uint8_t num, isr_handler_t handler) {
+    (void)num; (void)handler;
+}

@@ -59,9 +59,16 @@ typedef struct {
 } __attribute__((packed)) interrupt_frame_t;
 
 /**
- * Interrupt handler function type
+ * Interrupt handler function type (called per-vector by isr_handler)
  */
 typedef void (*isr_handler_t)(interrupt_frame_t *frame);
+
+/**
+ * Master ISR dispatcher (called from assembly).
+ * Returns the ESP to use for the iret path; the scheduler may
+ * return a different task's ESP to perform a context switch.
+ */
+uint32_t isr_handler(uint32_t esp);
 
 /**
  * Initialize IDT
@@ -136,5 +143,8 @@ extern void irq12(void);  // PS/2 Mouse
 extern void irq13(void);  // FPU
 extern void irq14(void);  // Primary ATA
 extern void irq15(void);  // Secondary ATA
+
+// Software interrupts
+extern void isr129(void);  // INT 0x81 — task yield
 
 #endif // MATRYOSHKA_IDT_H

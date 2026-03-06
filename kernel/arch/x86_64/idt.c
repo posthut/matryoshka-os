@@ -6,6 +6,7 @@
 #include <matryoshka/idt.h>
 #include <matryoshka/pic.h>
 #include <matryoshka/vga.h>
+#include <matryoshka/task.h>
 
 // IDT entries array
 static idt_entry_t idt[IDT_ENTRIES];
@@ -123,9 +124,13 @@ static void default_exception_handler(interrupt_frame_t *frame) {
 }
 
 /**
- * Common interrupt handler (called from assembly)
+ * Common interrupt handler (called from assembly).
+ * Returns the ESP for the return path; the scheduler may swap it
+ * to switch tasks.
  */
-void isr_handler(interrupt_frame_t *frame) {
+uint32_t isr_handler(uint32_t esp) {
+    interrupt_frame_t *frame = (interrupt_frame_t *)esp;
+
     if (interrupt_handlers[frame->int_no] != NULL) {
         interrupt_handlers[frame->int_no](frame);
     } else if (frame->int_no < 32) {
@@ -133,6 +138,8 @@ void isr_handler(interrupt_frame_t *frame) {
     } else if (frame->int_no >= 32 && frame->int_no < 48) {
         pic_send_eoi(frame->int_no - 32);
     }
+
+    return task_schedule_if_needed(esp);
 }
 
 /**
@@ -207,6 +214,9 @@ void idt_init(void) {
     idt_set_gate(45, (uint32_t)irq13, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
     idt_set_gate(46, (uint32_t)irq14, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
     idt_set_gate(47, (uint32_t)irq15, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
+
+    // Software interrupt for task_yield (INT 0x81)
+    idt_set_gate(129, (uint32_t)isr129, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
     
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     vga_puts("  About to load IDT with LIDT instruction...\n");

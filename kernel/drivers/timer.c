@@ -7,6 +7,7 @@
 #include <matryoshka/idt.h>
 #include <matryoshka/pic.h>
 #include <matryoshka/vga.h>
+#include <matryoshka/task.h>
 
 // I/O port operations
 static inline void outb(uint16_t port, uint8_t value) {
@@ -20,13 +21,10 @@ static volatile uint64_t timer_ticks = 0;
  * Timer interrupt handler (IRQ0)
  */
 static void timer_irq_handler(interrupt_frame_t *frame) {
-    (void)frame; // Unused
-    
-    // Increment tick counter
+    (void)frame;
     timer_ticks++;
-    
-    // Send EOI to PIC
     pic_send_eoi(0);
+    task_request_reschedule();
 }
 
 /**

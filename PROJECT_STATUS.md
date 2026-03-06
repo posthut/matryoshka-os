@@ -2,7 +2,7 @@
 
 **Created:** March 5, 2026  
 **Updated:** March 6, 2026  
-**Current Stage:** Stage 5 - Cooperative Multitasking ✅ **WORKING!**
+**Current Stage:** Stage 5+ - Preemptive Multitasking ✅ **WORKING!**
 
 ---
 
@@ -70,9 +70,9 @@
 **Interrupts:** ✅ Enabled (STI) — stable!  
 **Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
 **Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, echo, reboot)  
-**Tasks:** ✅ Cooperative multitasking (round-robin)  
-**Lines of Code:** ~3700  
-**Test Coverage:** 0% (infrastructure ready)
+**Tasks:** ✅ Preemptive multitasking (round-robin, timer-driven)  
+**Lines of Code:** ~3800  
+**Unit Tests:** 66 (string, heap, PMM, task)
 
 ### What Works:
 - ✅ GRUB2 Multiboot2 boot
@@ -93,9 +93,10 @@
 - ✅ Interactive prompt (`mshka>`) with keyboard echo
 - ✅ Kernel shell with commands: help, clear, meminfo, uptime, ps, echo, reboot
 - ✅ String library (strlen, strcmp, memset, memcpy, memmove)
-- ✅ Cooperative multitasking — kernel threads with context switch
-- ✅ Round-robin scheduler with task_yield()
+- ✅ Preemptive multitasking — timer-driven context switch via ISR
+- ✅ Round-robin scheduler with task_yield() (INT 0x81)
 - ✅ Shell `ps` command lists all tasks
+- ✅ 66 unit tests (host-side) + QEMU integration tests
 
 ### Known Issues:
 - No known critical issues
@@ -122,18 +123,24 @@
 - ✅ Shell `ps` command — list tasks with PID/state/name
 - ✅ Demo: two tasks interleaving (tick/tock), then shell
 
+### Stage 5+: Preemptive Multitasking ✅
+- ✅ Unified ISR-based context switch (isr_handler returns new ESP)
+- ✅ Timer-driven preemption — scheduler called every tick (10ms)
+- ✅ Voluntary yield via software interrupt (INT 0x81)
+- ✅ New tasks start with fake ISR frame — popa/iret restores context
+- ✅ task_exit() marks TERMINATED, yields, never returns
+- ✅ Backward-compatible: keyboard wait still uses task_yield()
+
 ---
 
 ## 📋 Next Steps
 
-1. **Preemptive Scheduling (Stage 5+)**
-   - Timer-driven context switches (time-slice)
-   - TSS for ring transitions
-   - Task priorities / sleep / blocked states
-2. **Virtual Memory Manager (Stage 3.2)**
+1. **Virtual Memory Manager (Stage 3.2)**
    - Page tables, mapping, page fault handler
-3. **Filesystem (Stage 6)**
+2. **Filesystem (Stage 6)**
    - VFS layer, initrd / ramfs
+3. **System Calls (Stage 7)**
+   - INT 0x80, user/kernel transition
 
 ---
 
@@ -153,7 +160,7 @@
 
 **Interrupt Handling:**
 - **GDT:** 3 entries (null, code 0x08, data 0x10) — flat 32-bit
-- **IDT:** 256 entries (0-31 exceptions, 32-47 IRQs, rest not-present)
+- **IDT:** 256 entries (0-31 exceptions, 32-47 IRQs, 129 yield)
 - **PIC:** 8259 controller, IRQs 0-15 → INT 32-47
 - **ISRs:** Assembly stubs with context save/restore
 - **Timer:** PIT configured at 100 Hz, tick counting active
@@ -180,6 +187,7 @@
 - [x] Stage 4: Interrupt handling (IDT/PIC)
 - [x] Stage 4+: Device drivers (Timer, Keyboard)
 - [x] Stage 5: Process management (cooperative)
+- [x] Stage 5+: Preemptive scheduling (timer-driven)
 - [ ] Stage 6: Filesystem
 - [ ] Stage 7: System calls
 - [ ] Stage 8: Network stack

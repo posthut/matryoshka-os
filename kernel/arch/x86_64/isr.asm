@@ -84,42 +84,36 @@ IRQ 13, 45    ; FPU
 IRQ 14, 46    ; Primary ATA
 IRQ 15, 47    ; Secondary ATA
 
+; Software interrupt for task_yield()
+ISR_NOERRCODE 129   ; INT 0x81
+
 ; Common ISR stub
-; Saves CPU state, calls C handler, restores state
+; Saves CPU state, calls C handler (which may switch tasks by
+; returning a different ESP), restores state and irets.
 extern isr_handler
 
 isr_common_stub:
-    ; Save all general-purpose registers
     pusha
-    
-    ; Save data segment
+
     mov ax, ds
     push eax
-    
-    ; Load kernel data segment
+
     mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
-    
-    ; Call C handler
-    push esp            ; Pass pointer to interrupt_frame_t
-    call isr_handler
-    add esp, 4          ; Clean up parameter
-    
-    ; Restore data segment
+
+    push esp            ; pass frame pointer
+    call isr_handler    ; returns (possibly new) ESP in EAX
+    mov esp, eax        ; switch to returned stack
+
     pop eax
     mov ds, ax
     mov es, ax
     mov fs, ax
     mov gs, ax
-    
-    ; Restore registers
+
     popa
-    
-    ; Clean up error code and interrupt number
     add esp, 8
-    
-    ; Return from interrupt
     iret
