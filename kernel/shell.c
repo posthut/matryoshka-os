@@ -12,6 +12,7 @@
 #include <matryoshka/io.h>
 #include <matryoshka/string.h>
 #include <matryoshka/task.h>
+#include <matryoshka/vmm.h>
 
 #define CMD_MAX 256
 
@@ -49,6 +50,7 @@ static void cmd_clear(const char *args);
 static void cmd_meminfo(const char *args);
 static void cmd_uptime(const char *args);
 static void cmd_ps(const char *args);
+static void cmd_virt(const char *args);
 static void cmd_echo(const char *args);
 static void cmd_reboot(const char *args);
 
@@ -64,6 +66,7 @@ static const shell_cmd_t commands[] = {
     { "meminfo", "Display memory statistics", cmd_meminfo },
     { "uptime",  "Show system uptime",        cmd_uptime  },
     { "ps",      "List kernel tasks",         cmd_ps      },
+    { "virt",    "Virtual memory info",      cmd_virt    },
     { "echo",    "Print text to screen",      cmd_echo    },
     { "reboot",  "Restart the system",        cmd_reboot  },
 };
@@ -165,6 +168,44 @@ static void cmd_ps(const char *args) {
         vga_puts(name);
         vga_putchar('\n');
     }
+}
+
+static void print_hex32(uint32_t v) {
+    const char hex[] = "0123456789ABCDEF";
+    char buf[9];
+    for (int i = 7; i >= 0; i--) { buf[i] = hex[v & 0xF]; v >>= 4; }
+    buf[8] = '\0';
+    vga_puts(buf);
+}
+
+static void cmd_virt(const char *args) {
+    (void)args;
+    vmm_stats_t vs;
+    vmm_get_stats(&vs);
+
+    vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+    vga_puts("Virtual Memory (32-bit paging)\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+
+    vga_puts("  Mapped pages:   ");
+    print_uint(vs.mapped_pages);
+    vga_puts(" (");
+    print_size((uint64_t)vs.mapped_pages * 4096);
+    vga_puts(")\n");
+
+    vga_puts("  Page tables:    ");
+    print_uint(vs.page_tables);
+    vga_putchar('\n');
+
+    vga_puts("  Identity end:   0x");
+    print_hex32(vs.identity_end);
+    vga_putchar('\n');
+
+    uint32_t cr3;
+    __asm__ volatile("mov %%cr3, %0" : "=r"(cr3));
+    vga_puts("  CR3:            0x");
+    print_hex32(cr3);
+    vga_putchar('\n');
 }
 
 static void cmd_echo(const char *args) {

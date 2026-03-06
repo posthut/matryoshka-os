@@ -2,7 +2,7 @@
 
 **Created:** March 5, 2026  
 **Updated:** March 6, 2026  
-**Current Stage:** Stage 5+ - Preemptive Multitasking ✅ **WORKING!**
+**Current Stage:** Stage 3.2 - Virtual Memory Manager ✅ **WORKING!**
 
 ---
 
@@ -69,9 +69,10 @@
 **Timer:** ✅ Running (100 Hz, tick counting active)  
 **Interrupts:** ✅ Enabled (STI) — stable!  
 **Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
-**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, echo, reboot)  
+**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, virt, echo, reboot)  
 **Tasks:** ✅ Preemptive multitasking (round-robin, timer-driven)  
-**Lines of Code:** ~3800  
+**VMM:** ✅ 32-bit paging (identity-mapped, page fault handler)  
+**Lines of Code:** ~4100  
 **Unit Tests:** 66 (string, heap, PMM, task)
 
 ### What Works:
@@ -96,11 +97,13 @@
 - ✅ Preemptive multitasking — timer-driven context switch via ISR
 - ✅ Round-robin scheduler with task_yield() (INT 0x81)
 - ✅ Shell `ps` command lists all tasks
+- ✅ 32-bit paging: Page Directory + Page Tables, identity-mapped
+- ✅ Page fault handler (ISR 14) with diagnostic output
+- ✅ Shell `virt` command — CR3, mapped pages, page tables
 - ✅ 66 unit tests (host-side) + QEMU integration tests
 
 ### Known Issues:
 - No known critical issues
-- VMM (vmm.c) uses 64-bit registers — needs rework for 32-bit mode
 
 ---
 
@@ -131,16 +134,26 @@
 - ✅ task_exit() marks TERMINATED, yields, never returns
 - ✅ Backward-compatible: keyboard wait still uses task_yield()
 
+### Stage 3.2: Virtual Memory Manager ✅
+- ✅ 32-bit two-level paging: Page Directory → Page Table → 4KB page
+- ✅ Identity-maps all physical RAM (virtual == physical)
+- ✅ Page tables allocated from PMM at init time
+- ✅ vmm_map() / vmm_unmap() for arbitrary virtual→physical mapping
+- ✅ vmm_get_physical() — address translation by walking page tables
+- ✅ Page fault handler (ISR 14) with faulting address + error decode
+- ✅ TLB flush (invlpg / CR3 reload)
+- ✅ Shell `virt` command: CR3, mapped pages, page tables, identity end
+
 ---
 
 ## 📋 Next Steps
 
-1. **Virtual Memory Manager (Stage 3.2)**
-   - Page tables, mapping, page fault handler
-2. **Filesystem (Stage 6)**
+1. **Filesystem (Stage 6)**
    - VFS layer, initrd / ramfs
-3. **System Calls (Stage 7)**
+2. **System Calls (Stage 7)**
    - INT 0x80, user/kernel transition
+3. **Higher-half kernel**
+   - Map kernel to 0xC0000000+ (optional)
 
 ---
 
@@ -160,7 +173,7 @@
 
 **Interrupt Handling:**
 - **GDT:** 3 entries (null, code 0x08, data 0x10) — flat 32-bit
-- **IDT:** 256 entries (0-31 exceptions, 32-47 IRQs, 129 yield)
+- **IDT:** 256 entries (0-31 exceptions, 14 page fault, 32-47 IRQs, 129 yield)
 - **PIC:** 8259 controller, IRQs 0-15 → INT 32-47
 - **ISRs:** Assembly stubs with context save/restore
 - **Timer:** PIT configured at 100 Hz, tick counting active
@@ -182,7 +195,7 @@
 - [x] Stage 1: Environment setup
 - [x] Stage 2: Minimal kernel  
 - [x] Stage 3.1: PMM (Physical Memory Manager)
-- [ ] Stage 3.2: VMM (Virtual Memory Manager) - *deferred*
+- [x] Stage 3.2: VMM (Virtual Memory Manager)
 - [x] Stage 3.3: Heap allocator
 - [x] Stage 4: Interrupt handling (IDT/PIC)
 - [x] Stage 4+: Device drivers (Timer, Keyboard)

@@ -12,6 +12,7 @@
 #include <matryoshka/pic.h>
 #include <matryoshka/timer.h>
 #include <matryoshka/keyboard.h>
+#include <matryoshka/vmm.h>
 #include <matryoshka/task.h>
 #include <matryoshka/shell.h>
 
@@ -325,6 +326,13 @@ void kernel_main(unsigned long mbi_addr) {
     
     // Initialize PS/2 Keyboard (IRQ1)
     keyboard_init();
+    
+    // Initialize Virtual Memory Manager (enable paging)
+    if (vmm_init() != 0) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("ERROR: Failed to initialize VMM!\n");
+        goto halt;
+    }
     
     // Initialize task scheduler and register yield as keyboard wait
     task_init();
