@@ -12,6 +12,7 @@
 #include <matryoshka/pic.h>
 #include <matryoshka/timer.h>
 #include <matryoshka/keyboard.h>
+#include <matryoshka/shell.h>
 
 /**
  * Format a number with KB/MB/GB suffix
@@ -303,29 +304,8 @@ void kernel_main(unsigned long mbi_addr) {
     // Initialize PS/2 Keyboard (IRQ1)
     keyboard_init();
     
-    vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
-    vga_puts("All subsystems initialized. Type below:\n\n");
-    
-    // Interactive prompt — echo keyboard input
-    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_puts("mshka> ");
-    vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-    
-    while (1) {
-        char c = keyboard_getchar();
-        if (c == '\n') {
-            vga_putchar('\n');
-            vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-            vga_puts("mshka> ");
-            vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
-        } else if (c == '\b') {
-            vga_putchar('\b');
-            vga_putchar(' ');
-            vga_putchar('\b');
-        } else if (c >= ' ' && c <= '~') {
-            vga_putchar(c);
-        }
-    }
+    // Enter interactive shell (never returns)
+    shell_run();
     
 halt:
     __asm__ volatile("cli");

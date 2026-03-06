@@ -2,7 +2,7 @@
 
 **Created:** March 5, 2026  
 **Updated:** March 6, 2026  
-**Current Stage:** Stage 4+ - Interrupts Enabled, Timer Running ✅ **WORKING!**
+**Current Stage:** Stage 4+ - Kernel Shell with Commands ✅ **WORKING!**
 
 ---
 
@@ -69,7 +69,8 @@
 **Timer:** ✅ Running (100 Hz, tick counting active)  
 **Interrupts:** ✅ Enabled (STI) — stable!  
 **Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
-**Lines of Code:** ~3000  
+**Shell:** ✅ Interactive (help, clear, meminfo, uptime, echo, reboot)  
+**Lines of Code:** ~3300  
 **Test Coverage:** 0% (infrastructure ready)
 
 ### What Works:
@@ -89,6 +90,8 @@
 - ✅ timer_sleep_ms() / timer_get_ticks() working
 - ✅ PS/2 keyboard with Shift/Ctrl/Alt/CapsLock support
 - ✅ Interactive prompt (`mshka>`) with keyboard echo
+- ✅ Kernel shell with commands: help, clear, meminfo, uptime, echo, reboot
+- ✅ String library (strlen, strcmp, memset, memcpy, memmove)
 
 ### Known Issues:
 - No known critical issues
@@ -105,14 +108,9 @@
 
 ---
 
-## 📋 Next Steps (Shell & Process Management)
+## 📋 Next Steps (Process Management)
 
-1. **Shell / Console**
-   - Command parsing and execution
-   - Built-in commands (help, clear, meminfo, uptime)
-   - Command history
-
-4. **Process Management (Stage 5)**
+1. **Process Management (Stage 5)**
    - Task structures
    - Context switching
    - Scheduler (round-robin)
