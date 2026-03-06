@@ -144,30 +144,22 @@ run-vmware:
 	@echo "$(COLOR_YELLOW)VMware support coming soon...$(COLOR_RESET)"
 	@echo "For now, use the ISO: $(ISO_DIR)/$(ISO_FILE)"
 
-# Unit tests
+# Unit tests (host-side, no QEMU needed)
 test-unit:
 	@echo "$(COLOR_BLUE)Running unit tests...$(COLOR_RESET)"
-	@cd tests/unit && make test
+	@cd tests/unit && $(MAKE) test
 
-# Integration tests
-test-integration:
+# Integration tests (require QEMU + built ISO)
+test-integration: iso
 	@echo "$(COLOR_BLUE)Running integration tests...$(COLOR_RESET)"
-	@cd tests/integration && make test
-
-# System tests
-test-system:
-	@echo "$(COLOR_BLUE)Running system tests...$(COLOR_RESET)"
-	@cd tests/system && pytest -v
+	@cd tests/integration && $(MAKE) test
 
 # All tests
-test-all: test-unit test-integration test-system
+test-all: test-unit test-integration
 	@echo "$(COLOR_GREEN)✓ All tests completed$(COLOR_RESET)"
 
-# Coverage report
-coverage:
-	@echo "$(COLOR_BLUE)Generating coverage report...$(COLOR_RESET)"
-	@gcovr -r . --html --html-details -o coverage.html
-	@echo "$(COLOR_GREEN)✓ Coverage report: coverage.html$(COLOR_RESET)"
+# Shorthand
+test: test-unit
 
 # Clean build artifacts
 clean:
