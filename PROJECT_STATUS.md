@@ -2,7 +2,7 @@
 
 **Created:** March 5, 2026  
 **Updated:** March 6, 2026  
-**Current Stage:** Stage 8 - Networking (e1000 + IP/ARP/ICMP) ✅ **WORKING!**
+**Current Stage:** Stage 7 - System Calls (INT 0x80 + Ring 3) ✅ **WORKING!**
 
 ---
 
@@ -69,13 +69,14 @@
 **Timer:** ✅ Running (100 Hz, tick counting active)  
 **Interrupts:** ✅ Enabled (STI) — stable!  
 **Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
-**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, virt, ls, cat, mkdir, touch, write, net, echo, reboot)  
+**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, virt, ls, cat, mkdir, touch, write, net, syscall, echo, reboot)  
 **Tasks:** ✅ Preemptive multitasking (round-robin, timer-driven)  
 **VMM:** ✅ 32-bit paging (identity-mapped, page fault handler)  
 **Filesystem:** ✅ VFS + ramfs (ls, cat, mkdir, touch, write)  
 **Network:** ✅ e1000 driver + ARP/ICMP (ping reply)  
 **Serial:** ✅ COM1 klog() debug output  
-**Lines of Code:** ~5800  
+**Syscalls:** ✅ INT 0x80 + Ring 3 user-mode tasks  
+**Lines of Code:** ~6400  
 **Unit Tests:** 66 (string, heap, PMM, task)
 
 ### What Works:
@@ -114,6 +115,13 @@
 - ✅ ICMP echo reply (responds to ping)
 - ✅ Background `net` task for polling packets
 - ✅ Shell `net` command: MAC, IP, link, RX/TX counters
+- ✅ GDT extended: Ring 3 user code/data segments + TSS
+- ✅ TSS (Task State Segment): ESP0 updated on every task switch
+- ✅ INT 0x80 syscall handler with dispatch table
+- ✅ Syscalls: exit, write, read, getpid, uptime, sbrk, yield
+- ✅ User-mode (Ring 3) task creation with separate user/kernel stacks
+- ✅ VMM: vmm_set_user() marks pages user-accessible (PDE + PTE)
+- ✅ Shell `syscall` command: spawns ring 3 demo task
 - ✅ 66 unit tests (host-side) + QEMU integration tests
 
 ### Known Issues:
@@ -167,6 +175,15 @@
 - ✅ Default dirs: /tmp, /dev, /etc; welcome file /etc/motd
 - ✅ Shell commands: ls, cat, mkdir, touch, write
 
+### Stage 7: System Calls (INT 0x80 + Ring 3) ✅
+- ✅ GDT: 6 entries (null, kernel code/data, user code/data, TSS)
+- ✅ TSS: kernel stack pointer (ESP0) for ring 3→0 transitions
+- ✅ INT 0x80 registered with DPL=3 (callable from ring 3)
+- ✅ Syscall dispatch table (7 syscalls)
+- ✅ task_create_user(): ring 3 tasks with separate user/kernel stacks
+- ✅ VMM page permissions: vmm_set_user() for user-accessible pages
+- ✅ User demo: prints from ring 3 via sys_write, gets PID, uptime, exits
+
 ### Stage 8: Networking (e1000 + IP/ARP/ICMP) ✅
 - ✅ PCI configuration space access (pci.c)
 - ✅ Intel e1000 (82540EM) MMIO driver: init, reset, MAC, link
@@ -181,10 +198,11 @@
 
 ## 📋 Next Steps
 
-1. **UDP sockets** — basic send/receive
-2. **TCP (minimal)** — connection-oriented transport
-3. **System Calls (Stage 7)** — INT 0x80, user/kernel transition
-4. **SSH** — requires TCP + crypto (long-term goal)
+1. **ELF loader** — load user programs from ramfs
+2. **UDP sockets** — basic send/receive
+3. **TCP (minimal)** — connection-oriented transport
+4. **Higher-half kernel** — map kernel to 0xC0000000+
+5. **SSH** — requires TCP + crypto (long-term goal)
 
 ---
 
@@ -233,7 +251,7 @@
 - [x] Stage 5: Process management (cooperative)
 - [x] Stage 5+: Preemptive scheduling (timer-driven)
 - [x] Stage 6: Filesystem (VFS + ramfs)
-- [ ] Stage 7: System calls
+- [x] Stage 7: System calls (INT 0x80, Ring 3)
 - [x] Stage 8: Network stack (e1000, ARP, ICMP)
 - [ ] Stage 9: Userspace
 - [ ] Stage 10: Testing infrastructure

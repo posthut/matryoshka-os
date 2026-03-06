@@ -29,3 +29,17 @@ void vga_set_cursor_pos(uint8_t x, uint8_t y)            { (void)x; (void)y; }
 void idt_register_handler(uint8_t num, isr_handler_t handler) {
     (void)num; (void)handler;
 }
+
+/* ── VMM stubs ───────────────────────────────────────────────────── */
+
+int vmm_set_user(uint32_t virtual_addr) { (void)virtual_addr; return 0; }
+
+/* ── GDT/TSS stubs ──────────────────────────────────────────────── */
+
+#include <matryoshka/gdt.h>
+
+void tss_set_esp0(uint32_t esp0) { (void)esp0; }
+
+/* ── Serial stubs ────────────────────────────────────────────────── */
+
+void klog(const char *msg) { (void)msg; }

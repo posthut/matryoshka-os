@@ -58,4 +58,7 @@ void     vmm_get_stats(vmm_stats_t *stats);
 void     vmm_flush_tlb(uint32_t virtual_addr);
 void     vmm_flush_tlb_all(void);
 
+/** Mark an already-mapped page as user-accessible (PDE + PTE). */
+int      vmm_set_user(uint32_t virtual_addr);
+
 #endif /* MATRYOSHKA_VMM_H */

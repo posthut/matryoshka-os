@@ -24,10 +24,17 @@ typedef enum {
 void task_init(void);
 
 /**
- * Spawn a new kernel thread.
+ * Spawn a new kernel thread (ring 0).
  * @return task id, or (uint32_t)-1 on failure.
  */
 uint32_t task_create(void (*entry)(void), const char *name);
+
+/**
+ * Spawn a user-mode task (ring 3).
+ * The function at @a entry must only use syscalls (INT 0x80) for I/O.
+ * @return task id, or (uint32_t)-1 on failure.
+ */
+uint32_t task_create_user(void (*entry)(void), const char *name);
 
 /**
  * Voluntarily give up the CPU (triggers INT 0x81).

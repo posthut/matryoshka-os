@@ -1,26 +1,35 @@
 /**
  * MatryoshkaOS - Kernel Task (Thread) Scheduler
- * Preemptive round-robin for ring-0 threads.
+ * Preemptive round-robin for ring-0 and ring-3 threads.
  *
  * Context switches happen uniformly through the ISR path:
  *   - Timer IRQ (preemptive): timer handler requests reschedule
  *   - INT 0x81  (voluntary):  task_yield() triggers software interrupt
  * In both cases isr_handler() calls task_schedule_if_needed() which
  * may return a different task's ESP.
+ *
+ * Ring-3 tasks get a separate user stack; the CPU switches to the
+ * kernel stack (via TSS.ESP0) on INT 0x80 / hardware interrupts.
  */
 
 #include <matryoshka/task.h>
 #include <matryoshka/idt.h>
+#include <matryoshka/gdt.h>
 #include <matryoshka/heap.h>
+#include <matryoshka/vmm.h>
 #include <matryoshka/vga.h>
 #include <matryoshka/string.h>
+#include <matryoshka/serial.h>
 
 typedef struct {
     uint32_t      id;
     uint32_t      esp;
-    uint8_t      *stack_base;
+    uint8_t      *stack_base;       /* kernel stack (always present) */
+    uint8_t      *user_stack_base;  /* user stack (ring 3 only, else NULL) */
+    uint32_t      kernel_stack_top; /* top of kernel stack for TSS.ESP0 */
     task_state_t  state;
     const char   *name;
+    bool          is_user;
 } task_t;
 
 static task_t   tasks[MAX_TASKS];
@@ -53,10 +62,13 @@ static void yield_isr_handler(interrupt_frame_t *frame) {
 void task_init(void) {
     memset(tasks, 0, sizeof(tasks));
 
-    tasks[0].id         = 0;
-    tasks[0].state      = TASK_RUNNING;
-    tasks[0].name       = "kernel";
-    tasks[0].stack_base = NULL;
+    tasks[0].id              = 0;
+    tasks[0].state           = TASK_RUNNING;
+    tasks[0].name            = "kernel";
+    tasks[0].stack_base      = NULL;
+    tasks[0].user_stack_base = NULL;
+    tasks[0].kernel_stack_top = 0;
+    tasks[0].is_user         = false;
 
     current          = 0;
     count            = 1;
@@ -78,30 +90,24 @@ uint32_t task_create(void (*entry)(void), const char *name) {
     if (!stack) { count--; return (uint32_t)-1; }
 
     /*
-     * Build a fake ISR frame so that isr_common_stub can "return"
-     * into this task the first time it is scheduled.
+     * Build a fake ISR frame (ring 0) so isr_common_stub can
+     * "return" into this task the first time it is scheduled.
      *
-     *   [top]       task_exit   <- entry()'s return address
-     *   [top -  4]  EFLAGS     <- iret restores IF=1
-     *   [top -  8]  CS 0x08
-     *   [top - 12]  EIP=entry
-     *   [top - 16]  err_code 0
-     *   [top - 20]  int_no 0
-     *   [top - 24]  EAX 0       <- pusha block
-     *   [top - 28]  ECX 0
-     *   [top - 32]  EDX 0
-     *   [top - 36]  EBX 0
-     *   [top - 40]  ESP 0 (ignored by popa)
-     *   [top - 44]  EBP 0
-     *   [top - 48]  ESI 0
-     *   [top - 52]  EDI 0
-     *   [top - 56]  DS 0x10     <- saved ESP points here
+     * Layout (high → low):
+     *   task_exit     ← entry()'s return address
+     *   EFLAGS (IF=1)
+     *   CS 0x08
+     *   EIP = entry
+     *   err_code 0
+     *   int_no 0
+     *   pusha block (EAX..EDI = 0)
+     *   DS 0x10      ← saved ESP points here
      */
     uint32_t *sp = (uint32_t *)(stack + TASK_STACK_SIZE);
 
     *(--sp) = (uint32_t)task_exit;
-    *(--sp) = 0x202;                /* EFLAGS: IF=1, reserved bit 1 */
-    *(--sp) = 0x08;                 /* CS */
+    *(--sp) = 0x202;                /* EFLAGS: IF=1 */
+    *(--sp) = GDT_KERNEL_CODE_SEL;  /* CS */
     *(--sp) = (uint32_t)entry;      /* EIP */
     *(--sp) = 0;                    /* err_code */
     *(--sp) = 0;                    /* int_no */
@@ -113,14 +119,88 @@ uint32_t task_create(void (*entry)(void), const char *name) {
     *(--sp) = 0;                    /* EBP */
     *(--sp) = 0;                    /* ESI */
     *(--sp) = 0;                    /* EDI */
-    *(--sp) = 0x10;                 /* DS */
+    *(--sp) = GDT_KERNEL_DATA_SEL;  /* DS */
 
-    tasks[id].id         = id;
-    tasks[id].esp        = (uint32_t)sp;
-    tasks[id].stack_base = stack;
-    tasks[id].state      = TASK_READY;
-    tasks[id].name       = name;
+    tasks[id].id              = id;
+    tasks[id].esp             = (uint32_t)sp;
+    tasks[id].stack_base      = stack;
+    tasks[id].user_stack_base = NULL;
+    tasks[id].kernel_stack_top = (uint32_t)(stack + TASK_STACK_SIZE);
+    tasks[id].state           = TASK_READY;
+    tasks[id].name            = name;
+    tasks[id].is_user         = false;
 
+    return id;
+}
+
+uint32_t task_create_user(void (*entry)(void), const char *name) {
+    if (count >= MAX_TASKS) return (uint32_t)-1;
+
+    uint32_t id = count++;
+    uint8_t *kstack = (uint8_t *)kmalloc(TASK_STACK_SIZE);
+    uint8_t *ustack = (uint8_t *)kmalloc(TASK_STACK_SIZE);
+    if (!kstack || !ustack) {
+        if (kstack) kfree(kstack);
+        if (ustack) kfree(ustack);
+        count--;
+        return (uint32_t)-1;
+    }
+
+    /* Mark user stack pages as user-accessible */
+    for (uint32_t off = 0; off < TASK_STACK_SIZE; off += PAGE_SIZE) {
+        vmm_set_user((uint32_t)ustack + off);
+    }
+
+    /* Mark pages containing the user function as user-accessible.
+     * We mark two pages to cover the case where the function straddles
+     * a page boundary (the function itself is small). */
+    vmm_set_user(PAGE_ALIGN_DOWN((uint32_t)entry));
+    vmm_set_user(PAGE_ALIGN_DOWN((uint32_t)entry) + PAGE_SIZE);
+
+    /*
+     * Build a ring-3 ISR frame on the KERNEL stack.
+     * When the CPU irets to ring 3 it pops: EIP, CS, EFLAGS, ESP, SS.
+     *
+     * Layout (high → low):
+     *   user SS       = 0x23  (GDT_USER_DATA_SEL)
+     *   user ESP      = top of user stack
+     *   EFLAGS (IF=1)
+     *   CS 0x1B       (GDT_USER_CODE_SEL)
+     *   EIP = entry
+     *   err_code 0
+     *   int_no 0
+     *   pusha block   (all 0)
+     *   DS 0x23       ← saved ESP points here
+     */
+    uint32_t *sp = (uint32_t *)(kstack + TASK_STACK_SIZE);
+
+    *(--sp) = GDT_USER_DATA_SEL;                /* user SS */
+    *(--sp) = (uint32_t)(ustack + TASK_STACK_SIZE); /* user ESP */
+    *(--sp) = 0x202;                            /* EFLAGS: IF=1 */
+    *(--sp) = GDT_USER_CODE_SEL;                /* CS */
+    *(--sp) = (uint32_t)entry;                  /* EIP */
+    *(--sp) = 0;                                /* err_code */
+    *(--sp) = 0;                                /* int_no */
+    *(--sp) = 0;                                /* EAX */
+    *(--sp) = 0;                                /* ECX */
+    *(--sp) = 0;                                /* EDX */
+    *(--sp) = 0;                                /* EBX */
+    *(--sp) = 0;                                /* ESP (popa ignores) */
+    *(--sp) = 0;                                /* EBP */
+    *(--sp) = 0;                                /* ESI */
+    *(--sp) = 0;                                /* EDI */
+    *(--sp) = GDT_USER_DATA_SEL;                /* DS */
+
+    tasks[id].id              = id;
+    tasks[id].esp             = (uint32_t)sp;
+    tasks[id].stack_base      = kstack;
+    tasks[id].user_stack_base = ustack;
+    tasks[id].kernel_stack_top = (uint32_t)(kstack + TASK_STACK_SIZE);
+    tasks[id].state           = TASK_READY;
+    tasks[id].name            = name;
+    tasks[id].is_user         = true;
+
+    klog("task: created user-mode task");
     return id;
 }
 
@@ -153,6 +233,10 @@ uint32_t task_schedule_if_needed(uint32_t esp) {
 
     current = next;
     tasks[current].state = TASK_RUNNING;
+
+    /* Update TSS.ESP0 so ring 3→0 transitions use the right stack */
+    if (tasks[current].kernel_stack_top)
+        tss_set_esp0(tasks[current].kernel_stack_top);
 
     return tasks[current].esp;
 }

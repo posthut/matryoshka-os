@@ -19,6 +19,7 @@
 #include <matryoshka/e1000.h>
 #include <matryoshka/net.h>
 #include <matryoshka/task.h>
+#include <matryoshka/syscall.h>
 #include <matryoshka/shell.h>
 
 /**
@@ -360,6 +361,7 @@ void kernel_main(unsigned long mbi_addr) {
     
     // Initialize task scheduler and register yield as keyboard wait
     task_init();
+    syscall_init();
     keyboard_set_wait_func(task_yield);
     
     // Demo: spawn two short-lived tasks to demonstrate multitasking

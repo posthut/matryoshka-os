@@ -72,6 +72,13 @@ gdt_flush:
     mov ss, ax
     ret
 
+; TSS flush — load Task Register with TSS selector (0x28)
+global tss_flush
+tss_flush:
+    mov ax, 0x28
+    ltr ax
+    ret
+
 ; BSS section for stack
 section .bss
 align 16

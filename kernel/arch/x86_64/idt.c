@@ -215,7 +215,10 @@ void idt_init(void) {
     idt_set_gate(46, (uint32_t)irq14, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
     idt_set_gate(47, (uint32_t)irq15, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
 
-    // Software interrupt for task_yield (INT 0x81)
+    // INT 0x80 — system calls (DPL=3 so ring 3 code can invoke)
+    idt_set_gate(128, (uint32_t)isr128, 0x08, IDT_FLAG_DPL3 | IDT_GATE_INT32);
+
+    // INT 0x81 — voluntary task yield
     idt_set_gate(129, (uint32_t)isr129, 0x08, IDT_FLAG_DPL0 | IDT_GATE_INT32);
     
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);

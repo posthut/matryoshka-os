@@ -84,8 +84,9 @@ IRQ 13, 45    ; FPU
 IRQ 14, 46    ; Primary ATA
 IRQ 15, 47    ; Secondary ATA
 
-; Software interrupt for task_yield()
-ISR_NOERRCODE 129   ; INT 0x81
+; Software interrupts
+ISR_NOERRCODE 128   ; INT 0x80 — system calls
+ISR_NOERRCODE 129   ; INT 0x81 — task yield
 
 ; Common ISR stub
 ; Saves CPU state, calls C handler (which may switch tasks by

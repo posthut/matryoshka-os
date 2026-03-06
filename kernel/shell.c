@@ -16,6 +16,7 @@
 #include <matryoshka/vfs.h>
 #include <matryoshka/e1000.h>
 #include <matryoshka/net.h>
+#include <matryoshka/syscall.h>
 
 #define CMD_MAX 256
 
@@ -60,6 +61,7 @@ static void cmd_mkdir(const char *args);
 static void cmd_touch(const char *args);
 static void cmd_write(const char *args);
 static void cmd_net(const char *args);
+static void cmd_syscall(const char *args);
 static void cmd_echo(const char *args);
 static void cmd_reboot(const char *args);
 
@@ -82,6 +84,7 @@ static const shell_cmd_t commands[] = {
     { "touch",   "Create empty file",        cmd_touch   },
     { "write",   "Write text: write PATH text", cmd_write },
     { "net",     "Network status",            cmd_net     },
+    { "syscall", "Run user-mode syscall demo",cmd_syscall },
     { "echo",    "Print text to screen",      cmd_echo    },
     { "reboot",  "Restart the system",        cmd_reboot  },
 };
@@ -390,6 +393,60 @@ static void cmd_net(const char *args) {
     vga_puts("  TX:     ");
     print_uint(e1000_packets_tx());
     vga_puts(" packets\n");
+}
+
+/**
+ * User-mode demo: this function runs in ring 3 and communicates
+ * with the kernel exclusively through INT 0x80 system calls.
+ */
+static void user_demo_entry(void) {
+    /* sys_write(1, msg, len) — write to VGA */
+    char msg1[] = {'[', 'U', 'S', 'E', 'R', ']', ' ',
+                   'H', 'e', 'l', 'l', 'o', ' ', 'f', 'r', 'o', 'm',
+                   ' ', 'R', 'i', 'n', 'g', ' ', '3', '!', '\n', '\0'};
+    _syscall3(SYS_WRITE, 1, (uint32_t)msg1, 26);
+
+    /* sys_getpid() */
+    int32_t pid = _syscall0(SYS_GETPID);
+    char pidmsg[] = {'[', 'U', 'S', 'E', 'R', ']', ' ',
+                     'P', 'I', 'D', '=', '0' + (pid % 10), '\n', '\0'};
+    _syscall3(SYS_WRITE, 1, (uint32_t)pidmsg, 13);
+
+    /* sys_uptime() */
+    int32_t ticks = _syscall0(SYS_UPTIME);
+    char tmsg[] = {'[', 'U', 'S', 'E', 'R', ']', ' ',
+                   'T', 'i', 'c', 'k', 's', '=', '0', '0', '0', '0', '0', '\n', '\0'};
+    for (int i = 17; i >= 13; i--) {
+        tmsg[i] = '0' + (ticks % 10);
+        ticks /= 10;
+    }
+    _syscall3(SYS_WRITE, 1, (uint32_t)tmsg, 19);
+
+    char done[] = {'[', 'U', 'S', 'E', 'R', ']', ' ',
+                   'E', 'x', 'i', 't', 'i', 'n', 'g', '\n', '\0'};
+    _syscall3(SYS_WRITE, 1, (uint32_t)done, 15);
+
+    /* sys_exit(0) */
+    _syscall1(SYS_EXIT, 0);
+}
+
+static void cmd_syscall(const char *args) {
+    (void)args;
+    vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+    vga_puts("Spawning user-mode (ring 3) task...\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+
+    /* Mark the page containing user_demo_entry as user-accessible */
+    uint32_t id = task_create_user(user_demo_entry, "user_demo");
+    if (id == (uint32_t)-1) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("  ERROR: failed to create user task\n");
+        return;
+    }
+
+    vga_puts("  Task created (id=");
+    print_uint(id);
+    vga_puts("), will run on next schedule tick\n");
 }
 
 static void cmd_echo(const char *args) {

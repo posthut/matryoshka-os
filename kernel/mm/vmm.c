@@ -159,6 +159,10 @@ int vmm_map(uint32_t virtual_addr, uint32_t physical_addr, uint32_t flags) {
         stats.page_tables++;
     }
 
+    /* Propagate PTE_USER to the PDE so hardware allows ring 3 access */
+    if (flags & PTE_USER)
+        page_directory[pd_idx] |= PTE_USER;
+
     uint32_t *pt = (uint32_t *)(page_directory[pd_idx] & PTE_ADDR_MASK);
     pt[pt_idx] = (physical_addr & PTE_ADDR_MASK) | (flags & 0xFFF);
     stats.mapped_pages++;
@@ -218,6 +222,24 @@ void vmm_get_stats(vmm_stats_t *out) {
 }
 
 /* ── TLB flush ────────────────────────────────────────────────────── */
+
+int vmm_set_user(uint32_t virtual_addr) {
+    uint32_t pd_idx = VMM_PD_INDEX(virtual_addr);
+    uint32_t pt_idx = VMM_PT_INDEX(virtual_addr);
+
+    if (!(page_directory[pd_idx] & PTE_PRESENT))
+        return -1;
+
+    page_directory[pd_idx] |= PTE_USER;
+
+    uint32_t *pt = (uint32_t *)(page_directory[pd_idx] & PTE_ADDR_MASK);
+    if (!(pt[pt_idx] & PTE_PRESENT))
+        return -1;
+
+    pt[pt_idx] |= PTE_USER;
+    vmm_flush_tlb(virtual_addr);
+    return 0;
+}
 
 void vmm_flush_tlb(uint32_t virtual_addr) {
     __asm__ volatile("invlpg (%0)" : : "r"(virtual_addr) : "memory");

@@ -145,6 +145,7 @@ extern void irq14(void);  // Primary ATA
 extern void irq15(void);  // Secondary ATA
 
 // Software interrupts
+extern void isr128(void);  // INT 0x80 — system calls
 extern void isr129(void);  // INT 0x81 — task yield
 
 #endif // MATRYOSHKA_IDT_H
