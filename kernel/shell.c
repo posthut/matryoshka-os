@@ -14,6 +14,8 @@
 #include <matryoshka/task.h>
 #include <matryoshka/vmm.h>
 #include <matryoshka/vfs.h>
+#include <matryoshka/e1000.h>
+#include <matryoshka/net.h>
 
 #define CMD_MAX 256
 
@@ -57,6 +59,7 @@ static void cmd_cat(const char *args);
 static void cmd_mkdir(const char *args);
 static void cmd_touch(const char *args);
 static void cmd_write(const char *args);
+static void cmd_net(const char *args);
 static void cmd_echo(const char *args);
 static void cmd_reboot(const char *args);
 
@@ -78,6 +81,7 @@ static const shell_cmd_t commands[] = {
     { "mkdir",   "Create directory",         cmd_mkdir   },
     { "touch",   "Create empty file",        cmd_touch   },
     { "write",   "Write text: write PATH text", cmd_write },
+    { "net",     "Network status",            cmd_net     },
     { "echo",    "Print text to screen",      cmd_echo    },
     { "reboot",  "Restart the system",        cmd_reboot  },
 };
@@ -340,6 +344,52 @@ static void cmd_write(const char *args) {
     vfs_write(fd, text, strlen(text));
     vfs_write(fd, "\n", 1);
     vfs_close(fd);
+}
+
+static void cmd_net(const char *args) {
+    (void)args;
+    vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+    vga_puts("Network Status\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+
+    uint8_t mac[6];
+    e1000_get_mac(mac);
+    vga_puts("  MAC:    ");
+    for (int i = 0; i < 6; i++) {
+        const char hex[] = "0123456789ABCDEF";
+        vga_putchar(hex[mac[i] >> 4]);
+        vga_putchar(hex[mac[i] & 0xF]);
+        if (i < 5) vga_putchar(':');
+    }
+    vga_putchar('\n');
+
+    uint8_t ip[4];
+    net_get_ip(ip);
+    vga_puts("  IP:     ");
+    for (int i = 0; i < 4; i++) {
+        print_uint(ip[i]);
+        if (i < 3) vga_putchar('.');
+    }
+    vga_putchar('\n');
+
+    vga_puts("  Link:   ");
+    if (e1000_link_up()) {
+        vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_puts("UP");
+    } else {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("DOWN");
+    }
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    vga_putchar('\n');
+
+    vga_puts("  RX:     ");
+    print_uint(e1000_packets_rx());
+    vga_puts(" packets\n");
+
+    vga_puts("  TX:     ");
+    print_uint(e1000_packets_tx());
+    vga_puts(" packets\n");
 }
 
 static void cmd_echo(const char *args) {

@@ -35,4 +35,13 @@ void serial_puts(const char *str);
  */
 void serial_println(const char *str);
 
+/**
+ * Formatted kernel log line:  "[klog] msg\n"
+ * Use for debug tracing visible on the host via -serial stdio.
+ */
+void klog(const char *msg);
+
+/** Print a 32-bit value in hex to serial */
+void serial_put_hex32(uint32_t v);
+
 #endif // MATRYOSHKA_SERIAL_H

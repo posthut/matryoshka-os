@@ -2,7 +2,7 @@
 
 **Created:** March 5, 2026  
 **Updated:** March 6, 2026  
-**Current Stage:** Stage 6 - Filesystem (VFS + ramfs) ✅ **WORKING!**
+**Current Stage:** Stage 8 - Networking (e1000 + IP/ARP/ICMP) ✅ **WORKING!**
 
 ---
 
@@ -69,11 +69,13 @@
 **Timer:** ✅ Running (100 Hz, tick counting active)  
 **Interrupts:** ✅ Enabled (STI) — stable!  
 **Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
-**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, virt, ls, cat, mkdir, touch, write, echo, reboot)  
+**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, virt, ls, cat, mkdir, touch, write, net, echo, reboot)  
 **Tasks:** ✅ Preemptive multitasking (round-robin, timer-driven)  
 **VMM:** ✅ 32-bit paging (identity-mapped, page fault handler)  
 **Filesystem:** ✅ VFS + ramfs (ls, cat, mkdir, touch, write)  
-**Lines of Code:** ~4700  
+**Network:** ✅ e1000 driver + ARP/ICMP (ping reply)  
+**Serial:** ✅ COM1 klog() debug output  
+**Lines of Code:** ~5800  
 **Unit Tests:** 66 (string, heap, PMM, task)
 
 ### What Works:
@@ -105,6 +107,13 @@
 - ✅ ramfs: in-memory filesystem with growable file buffers
 - ✅ Shell: ls, cat, mkdir, touch, write commands
 - ✅ Default fs layout: /tmp, /dev, /etc with /etc/motd
+- ✅ Serial COM1 klog() for host-visible debug output
+- ✅ PCI bus scan for device discovery
+- ✅ e1000 NIC driver: MMIO, TX/RX descriptor rings, MAC, link status
+- ✅ ARP responder (replies to ARP requests for our IP)
+- ✅ ICMP echo reply (responds to ping)
+- ✅ Background `net` task for polling packets
+- ✅ Shell `net` command: MAC, IP, link, RX/TX counters
 - ✅ 66 unit tests (host-side) + QEMU integration tests
 
 ### Known Issues:
@@ -158,16 +167,24 @@
 - ✅ Default dirs: /tmp, /dev, /etc; welcome file /etc/motd
 - ✅ Shell commands: ls, cat, mkdir, touch, write
 
+### Stage 8: Networking (e1000 + IP/ARP/ICMP) ✅
+- ✅ PCI configuration space access (pci.c)
+- ✅ Intel e1000 (82540EM) MMIO driver: init, reset, MAC, link
+- ✅ TX/RX descriptor ring buffers (8 TX, 32 RX)
+- ✅ Ethernet frame send/receive
+- ✅ ARP responder — replies to ARP requests for our IP
+- ✅ IPv4 + ICMP — responds to ping (echo request → echo reply)
+- ✅ Background net polling task (preemptively scheduled)
+- ✅ Serial COM1 driver with klog() for debug tracing
+
 ---
 
 ## 📋 Next Steps
 
-1. **System Calls (Stage 7)**
-   - INT 0x80, user/kernel transition
-2. **Serial / UART driver**
-   - Kernel logging to COM1
-3. **Higher-half kernel**
-   - Map kernel to 0xC0000000+ (optional)
+1. **UDP sockets** — basic send/receive
+2. **TCP (minimal)** — connection-oriented transport
+3. **System Calls (Stage 7)** — INT 0x80, user/kernel transition
+4. **SSH** — requires TCP + crypto (long-term goal)
 
 ---
 
@@ -217,7 +234,7 @@
 - [x] Stage 5+: Preemptive scheduling (timer-driven)
 - [x] Stage 6: Filesystem (VFS + ramfs)
 - [ ] Stage 7: System calls
-- [ ] Stage 8: Network stack
+- [x] Stage 8: Network stack (e1000, ARP, ICMP)
 - [ ] Stage 9: Userspace
 - [ ] Stage 10: Testing infrastructure
 

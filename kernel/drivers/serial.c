@@ -82,3 +82,17 @@ void serial_println(const char *str) {
     serial_putc('\r');
     serial_putc('\n');
 }
+
+void serial_put_hex32(uint32_t v) {
+    const char hex[] = "0123456789ABCDEF";
+    serial_puts("0x");
+    for (int i = 28; i >= 0; i -= 4)
+        serial_putc(hex[(v >> i) & 0xF]);
+}
+
+void klog(const char *msg) {
+    serial_puts("[klog] ");
+    serial_puts(msg);
+    serial_putc('\r');
+    serial_putc('\n');
+}

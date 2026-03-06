@@ -4,6 +4,7 @@
  */
 
 #include <matryoshka/vga.h>
+#include <matryoshka/serial.h>
 #include <matryoshka/gdt.h>
 #include <matryoshka/multiboot2.h>
 #include <matryoshka/pmm.h>
@@ -15,6 +16,8 @@
 #include <matryoshka/vmm.h>
 #include <matryoshka/vfs.h>
 #include <matryoshka/ramfs.h>
+#include <matryoshka/e1000.h>
+#include <matryoshka/net.h>
 #include <matryoshka/task.h>
 #include <matryoshka/shell.h>
 
@@ -73,6 +76,14 @@ static void format_memory_size(uint64_t bytes, char *buffer) {
     }
 }
 
+/* Network polling task — runs in background, handles ARP/ICMP */
+static void net_task(void) {
+    while (1) {
+        net_poll();
+        task_yield();
+    }
+}
+
 /* Demo tasks — preempted by timer, no explicit yield needed */
 static void demo_task_a(void) {
     for (int i = 0; i < 5; i++) {
@@ -102,6 +113,8 @@ static void demo_task_b(void) {
 void kernel_main(unsigned long mbi_addr) {
     // Initialize VGA driver first (before anything else)
     vga_init();
+    serial_init();
+    klog("MatryoshkaOS booting...");
     
     // Display welcome message
     vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
@@ -340,6 +353,11 @@ void kernel_main(unsigned long mbi_addr) {
     vfs_init();
     ramfs_init();
     
+    // Initialize network (e1000 + IP stack)
+    if (e1000_init() == 0) {
+        net_init();
+    }
+    
     // Initialize task scheduler and register yield as keyboard wait
     task_init();
     keyboard_set_wait_func(task_yield);
@@ -357,6 +375,13 @@ void kernel_main(unsigned long mbi_addr) {
     
     vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_puts("Demo complete. Entering shell.\n\n");
+    
+    // Start background network polling task
+    if (e1000_link_up()) {
+        task_create(net_task, "net");
+    }
+    
+    klog("Boot complete, entering shell");
     
     // Enter interactive shell (never returns)
     shell_run();
