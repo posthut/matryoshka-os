@@ -2,7 +2,7 @@
 
 **Created:** March 5, 2026  
 **Updated:** March 6, 2026  
-**Current Stage:** Stage 4+ - Kernel Shell with Commands ✅ **WORKING!**
+**Current Stage:** Stage 5 - Cooperative Multitasking ✅ **WORKING!**
 
 ---
 
@@ -69,8 +69,9 @@
 **Timer:** ✅ Running (100 Hz, tick counting active)  
 **Interrupts:** ✅ Enabled (STI) — stable!  
 **Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
-**Shell:** ✅ Interactive (help, clear, meminfo, uptime, echo, reboot)  
-**Lines of Code:** ~3300  
+**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, echo, reboot)  
+**Tasks:** ✅ Cooperative multitasking (round-robin)  
+**Lines of Code:** ~3700  
 **Test Coverage:** 0% (infrastructure ready)
 
 ### What Works:
@@ -90,8 +91,11 @@
 - ✅ timer_sleep_ms() / timer_get_ticks() working
 - ✅ PS/2 keyboard with Shift/Ctrl/Alt/CapsLock support
 - ✅ Interactive prompt (`mshka>`) with keyboard echo
-- ✅ Kernel shell with commands: help, clear, meminfo, uptime, echo, reboot
+- ✅ Kernel shell with commands: help, clear, meminfo, uptime, ps, echo, reboot
 - ✅ String library (strlen, strcmp, memset, memcpy, memmove)
+- ✅ Cooperative multitasking — kernel threads with context switch
+- ✅ Round-robin scheduler with task_yield()
+- ✅ Shell `ps` command lists all tasks
 
 ### Known Issues:
 - No known critical issues
@@ -108,13 +112,28 @@
 
 ---
 
-## 📋 Next Steps (Process Management)
+### Stage 5: Cooperative Multitasking ✅
+- ✅ Task (PCB) structures — id, state, saved ESP, stack, name
+- ✅ Context switch (context.asm) — callee-saved registers, stack swap
+- ✅ Entry trampoline — enables interrupts before first run
+- ✅ Round-robin scheduler — find_next_ready() scan
+- ✅ task_init() / task_create() / task_yield() / task_exit()
+- ✅ Yield-aware keyboard driver (set_wait_func callback)
+- ✅ Shell `ps` command — list tasks with PID/state/name
+- ✅ Demo: two tasks interleaving (tick/tock), then shell
 
-1. **Process Management (Stage 5)**
-   - Task structures
-   - Context switching
-   - Scheduler (round-robin)
-   - Multitasking
+---
+
+## 📋 Next Steps
+
+1. **Preemptive Scheduling (Stage 5+)**
+   - Timer-driven context switches (time-slice)
+   - TSS for ring transitions
+   - Task priorities / sleep / blocked states
+2. **Virtual Memory Manager (Stage 3.2)**
+   - Page tables, mapping, page fault handler
+3. **Filesystem (Stage 6)**
+   - VFS layer, initrd / ramfs
 
 ---
 
@@ -149,8 +168,8 @@
 
 ## 📊 Progress Tracking
 
-**Current Stage:** 4 / 10  
-**Completion:** ~40%
+**Current Stage:** 5 / 10  
+**Completion:** ~45%
 
 ### Checklist
 - [x] Stage 1: Environment setup
@@ -160,7 +179,7 @@
 - [x] Stage 3.3: Heap allocator
 - [x] Stage 4: Interrupt handling (IDT/PIC)
 - [x] Stage 4+: Device drivers (Timer, Keyboard)
-- [ ] Stage 5: Process management
+- [x] Stage 5: Process management (cooperative)
 - [ ] Stage 6: Filesystem
 - [ ] Stage 7: System calls
 - [ ] Stage 8: Network stack

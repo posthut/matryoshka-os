@@ -12,6 +12,7 @@
 #include <matryoshka/pic.h>
 #include <matryoshka/timer.h>
 #include <matryoshka/keyboard.h>
+#include <matryoshka/task.h>
 #include <matryoshka/shell.h>
 
 /**
@@ -66,6 +67,27 @@ static void format_memory_size(uint64_t bytes, char *buffer) {
         buffer[5] = 'K';
         buffer[6] = 'B';
         buffer[7] = '\0';
+    }
+}
+
+/* Demo tasks for multitasking demonstration */
+static void demo_task_a(void) {
+    for (int i = 0; i < 5; i++) {
+        vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+        vga_puts("[Task A] tick ");
+        vga_putchar('0' + i);
+        vga_putchar('\n');
+        task_yield();
+    }
+}
+
+static void demo_task_b(void) {
+    for (int i = 0; i < 5; i++) {
+        vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
+        vga_puts("[Task B] tock ");
+        vga_putchar('0' + i);
+        vga_putchar('\n');
+        task_yield();
     }
 }
 
@@ -303,6 +325,25 @@ void kernel_main(unsigned long mbi_addr) {
     
     // Initialize PS/2 Keyboard (IRQ1)
     keyboard_init();
+    
+    // Initialize task scheduler and register yield as keyboard wait
+    task_init();
+    keyboard_set_wait_func(task_yield);
+    
+    // Demo: spawn two short-lived tasks to demonstrate multitasking
+    task_create(demo_task_a, "demo_a");
+    task_create(demo_task_b, "demo_b");
+    
+    vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+    vga_puts("Running multitasking demo...\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    
+    // Yield to let demo tasks run (they yield back and forth)
+    for (int i = 0; i < 12; i++)
+        task_yield();
+    
+    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_puts("Demo complete. Entering shell.\n\n");
     
     // Enter interactive shell (never returns)
     shell_run();

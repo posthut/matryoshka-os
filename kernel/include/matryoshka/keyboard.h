@@ -42,4 +42,10 @@ bool keyboard_has_input(void);
  */
 uint8_t keyboard_get_modifiers(void);
 
+/**
+ * Set a custom wait function called while getchar() spins.
+ * Pass NULL to revert to HLT (default).
+ */
+void keyboard_set_wait_func(void (*func)(void));
+
 #endif /* MATRYOSHKA_KEYBOARD_H */

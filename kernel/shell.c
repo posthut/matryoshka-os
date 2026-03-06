@@ -11,6 +11,7 @@
 #include <matryoshka/heap.h>
 #include <matryoshka/io.h>
 #include <matryoshka/string.h>
+#include <matryoshka/task.h>
 
 #define CMD_MAX 256
 
@@ -47,6 +48,7 @@ static void cmd_help(const char *args);
 static void cmd_clear(const char *args);
 static void cmd_meminfo(const char *args);
 static void cmd_uptime(const char *args);
+static void cmd_ps(const char *args);
 static void cmd_echo(const char *args);
 static void cmd_reboot(const char *args);
 
@@ -61,6 +63,7 @@ static const shell_cmd_t commands[] = {
     { "clear",   "Clear the screen",          cmd_clear   },
     { "meminfo", "Display memory statistics", cmd_meminfo },
     { "uptime",  "Show system uptime",        cmd_uptime  },
+    { "ps",      "List kernel tasks",         cmd_ps      },
     { "echo",    "Print text to screen",      cmd_echo    },
     { "reboot",  "Restart the system",        cmd_reboot  },
 };
@@ -130,6 +133,38 @@ static void cmd_uptime(const char *args) {
     print_uint(sec); vga_puts("s (");
     print_uint(ticks);
     vga_puts(" ticks)\n");
+}
+
+static void cmd_ps(const char *args) {
+    (void)args;
+    vga_set_color(VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
+    vga_puts("  PID  STATE       NAME\n");
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+
+    uint32_t n = task_count();
+    for (uint32_t i = 0; i < n; i++) {
+        uint32_t id;
+        const char *name;
+        task_state_t st;
+        if (!task_get_info(i, &id, &name, &st)) continue;
+
+        vga_puts("  ");
+        print_uint(id);
+        size_t pad = 5 - (id >= 10 ? 2 : 1);
+        while (pad--) vga_putchar(' ');
+
+        switch (st) {
+        case TASK_RUNNING:    vga_set_color(VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+                              vga_puts("RUNNING    "); break;
+        case TASK_READY:      vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+                              vga_puts("READY      "); break;
+        case TASK_TERMINATED: vga_set_color(VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
+                              vga_puts("TERMINATED "); break;
+        }
+        vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+        vga_puts(name);
+        vga_putchar('\n');
+    }
 }
 
 static void cmd_echo(const char *args) {

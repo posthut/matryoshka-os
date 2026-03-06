@@ -47,6 +47,7 @@ static volatile bool    extended_pending;
 static char             kb_buffer[KB_BUFFER_SIZE];
 static volatile uint8_t kb_head;
 static volatile uint8_t kb_tail;
+static void (*wait_func)(void);
 
 /* ── Helpers ──────────────────────────────────────────────────────── */
 
@@ -149,6 +150,7 @@ void keyboard_init(void) {
     kb_tail = 0;
     modifiers = 0;
     extended_pending = false;
+    wait_func = NULL;
 
     /* Flush any pending data from the PS/2 controller */
     while (inb(KB_STATUS_PORT) & 0x01)
@@ -162,8 +164,12 @@ void keyboard_init(void) {
 }
 
 char keyboard_getchar(void) {
-    while (kb_head == kb_tail)
-        __asm__ volatile("hlt");
+    while (kb_head == kb_tail) {
+        if (wait_func)
+            wait_func();
+        else
+            __asm__ volatile("hlt");
+    }
 
     char c = kb_buffer[kb_tail];
     kb_tail = (kb_tail + 1) % KB_BUFFER_SIZE;
@@ -176,4 +182,8 @@ bool keyboard_has_input(void) {
 
 uint8_t keyboard_get_modifiers(void) {
     return modifiers;
+}
+
+void keyboard_set_wait_func(void (*func)(void)) {
+    wait_func = func;
 }
