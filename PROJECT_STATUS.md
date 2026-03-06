@@ -2,7 +2,7 @@
 
 **Created:** March 5, 2026  
 **Updated:** March 6, 2026  
-**Current Stage:** Stage 3.2 - Virtual Memory Manager ✅ **WORKING!**
+**Current Stage:** Stage 6 - Filesystem (VFS + ramfs) ✅ **WORKING!**
 
 ---
 
@@ -69,10 +69,11 @@
 **Timer:** ✅ Running (100 Hz, tick counting active)  
 **Interrupts:** ✅ Enabled (STI) — stable!  
 **Keyboard:** ✅ PS/2 driver (IRQ1, scancode set 1)  
-**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, virt, echo, reboot)  
+**Shell:** ✅ Interactive (help, clear, meminfo, uptime, ps, virt, ls, cat, mkdir, touch, write, echo, reboot)  
 **Tasks:** ✅ Preemptive multitasking (round-robin, timer-driven)  
 **VMM:** ✅ 32-bit paging (identity-mapped, page fault handler)  
-**Lines of Code:** ~4100  
+**Filesystem:** ✅ VFS + ramfs (ls, cat, mkdir, touch, write)  
+**Lines of Code:** ~4700  
 **Unit Tests:** 66 (string, heap, PMM, task)
 
 ### What Works:
@@ -100,6 +101,10 @@
 - ✅ 32-bit paging: Page Directory + Page Tables, identity-mapped
 - ✅ Page fault handler (ISR 14) with diagnostic output
 - ✅ Shell `virt` command — CR3, mapped pages, page tables
+- ✅ VFS abstraction: open/read/write/close, path resolution, fd table
+- ✅ ramfs: in-memory filesystem with growable file buffers
+- ✅ Shell: ls, cat, mkdir, touch, write commands
+- ✅ Default fs layout: /tmp, /dev, /etc with /etc/motd
 - ✅ 66 unit tests (host-side) + QEMU integration tests
 
 ### Known Issues:
@@ -144,14 +149,23 @@
 - ✅ TLB flush (invlpg / CR3 reload)
 - ✅ Shell `virt` command: CR3, mapped pages, page tables, identity end
 
+### Stage 6: Filesystem (VFS + ramfs) ✅
+- ✅ VFS layer: vfs_node tree, per-fs operations table, fd table (32 fds)
+- ✅ Path resolution: absolute paths, component-by-component walk
+- ✅ File API: vfs_open / vfs_read / vfs_write / vfs_close
+- ✅ Directory API: vfs_mkdir / vfs_readdir / vfs_create_file
+- ✅ ramfs backend: in-memory files with dynamically grown buffers
+- ✅ Default dirs: /tmp, /dev, /etc; welcome file /etc/motd
+- ✅ Shell commands: ls, cat, mkdir, touch, write
+
 ---
 
 ## 📋 Next Steps
 
-1. **Filesystem (Stage 6)**
-   - VFS layer, initrd / ramfs
-2. **System Calls (Stage 7)**
+1. **System Calls (Stage 7)**
    - INT 0x80, user/kernel transition
+2. **Serial / UART driver**
+   - Kernel logging to COM1
 3. **Higher-half kernel**
    - Map kernel to 0xC0000000+ (optional)
 
@@ -201,7 +215,7 @@
 - [x] Stage 4+: Device drivers (Timer, Keyboard)
 - [x] Stage 5: Process management (cooperative)
 - [x] Stage 5+: Preemptive scheduling (timer-driven)
-- [ ] Stage 6: Filesystem
+- [x] Stage 6: Filesystem (VFS + ramfs)
 - [ ] Stage 7: System calls
 - [ ] Stage 8: Network stack
 - [ ] Stage 9: Userspace

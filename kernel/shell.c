@@ -13,6 +13,7 @@
 #include <matryoshka/string.h>
 #include <matryoshka/task.h>
 #include <matryoshka/vmm.h>
+#include <matryoshka/vfs.h>
 
 #define CMD_MAX 256
 
@@ -51,6 +52,11 @@ static void cmd_meminfo(const char *args);
 static void cmd_uptime(const char *args);
 static void cmd_ps(const char *args);
 static void cmd_virt(const char *args);
+static void cmd_ls(const char *args);
+static void cmd_cat(const char *args);
+static void cmd_mkdir(const char *args);
+static void cmd_touch(const char *args);
+static void cmd_write(const char *args);
 static void cmd_echo(const char *args);
 static void cmd_reboot(const char *args);
 
@@ -67,6 +73,11 @@ static const shell_cmd_t commands[] = {
     { "uptime",  "Show system uptime",        cmd_uptime  },
     { "ps",      "List kernel tasks",         cmd_ps      },
     { "virt",    "Virtual memory info",      cmd_virt    },
+    { "ls",      "List directory [path]",    cmd_ls      },
+    { "cat",     "Show file contents",       cmd_cat     },
+    { "mkdir",   "Create directory",         cmd_mkdir   },
+    { "touch",   "Create empty file",        cmd_touch   },
+    { "write",   "Write text: write PATH text", cmd_write },
     { "echo",    "Print text to screen",      cmd_echo    },
     { "reboot",  "Restart the system",        cmd_reboot  },
 };
@@ -206,6 +217,129 @@ static void cmd_virt(const char *args) {
     vga_puts("  CR3:            0x");
     print_hex32(cr3);
     vga_putchar('\n');
+}
+
+static void cmd_ls(const char *args) {
+    const char *path = skip_spaces(args);
+    if (*path == '\0') path = "/";
+
+    vfs_node_t *dir = vfs_resolve(path);
+    if (!dir) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("ls: not found: ");
+        vga_puts(path);
+        vga_putchar('\n');
+        return;
+    }
+    if (!(dir->flags & VFS_DIRECTORY)) {
+        vga_puts(dir->name);
+        vga_puts("  ");
+        print_uint(dir->size);
+        vga_puts(" B\n");
+        return;
+    }
+
+    char name[VFS_NAME_MAX];
+    uint32_t type;
+    for (uint32_t i = 0; vfs_readdir(path, i, name, &type) == 0; i++) {
+        if (type & VFS_DIRECTORY) {
+            vga_set_color(VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+            vga_puts(name);
+            vga_putchar('/');
+        } else {
+            vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+            vga_puts(name);
+        }
+        vga_puts("  ");
+    }
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    vga_putchar('\n');
+}
+
+static void cmd_cat(const char *args) {
+    const char *path = skip_spaces(args);
+    if (*path == '\0') {
+        vga_puts("Usage: cat <path>\n");
+        return;
+    }
+
+    int fd = vfs_open(path, VFS_O_RDONLY);
+    if (fd < 0) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("cat: not found: ");
+        vga_puts(path);
+        vga_putchar('\n');
+        return;
+    }
+
+    char buf[128];
+    int n;
+    vga_set_color(VGA_COLOR_LIGHT_GREY, VGA_COLOR_BLACK);
+    while ((n = vfs_read(fd, buf, sizeof(buf) - 1)) > 0) {
+        buf[n] = '\0';
+        vga_puts(buf);
+    }
+    vfs_close(fd);
+}
+
+static void cmd_mkdir(const char *args) {
+    const char *path = skip_spaces(args);
+    if (*path == '\0') {
+        vga_puts("Usage: mkdir <path>\n");
+        return;
+    }
+    if (vfs_mkdir(path) < 0) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("mkdir: failed: ");
+        vga_puts(path);
+        vga_putchar('\n');
+    }
+}
+
+static void cmd_touch(const char *args) {
+    const char *path = skip_spaces(args);
+    if (*path == '\0') {
+        vga_puts("Usage: touch <path>\n");
+        return;
+    }
+    if (!vfs_create_file(path)) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("touch: failed: ");
+        vga_puts(path);
+        vga_putchar('\n');
+    }
+}
+
+static void cmd_write(const char *args) {
+    const char *p = skip_spaces(args);
+    if (*p == '\0') {
+        vga_puts("Usage: write <path> <text>\n");
+        return;
+    }
+
+    /* Extract path (first token) */
+    char path[128];
+    size_t i = 0;
+    while (*p && *p != ' ' && i < sizeof(path) - 1) path[i++] = *p++;
+    path[i] = '\0';
+
+    const char *text = skip_spaces(p);
+    if (*text == '\0') {
+        vga_puts("Usage: write <path> <text>\n");
+        return;
+    }
+
+    int fd = vfs_open(path, VFS_O_WRONLY | VFS_O_CREAT | VFS_O_TRUNC);
+    if (fd < 0) {
+        vga_set_color(VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_puts("write: cannot open: ");
+        vga_puts(path);
+        vga_putchar('\n');
+        return;
+    }
+    vfs_write(fd, text, strlen(text));
+    vfs_write(fd, "\n", 1);
+    vfs_close(fd);
 }
 
 static void cmd_echo(const char *args) {

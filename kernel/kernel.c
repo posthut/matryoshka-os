@@ -13,6 +13,8 @@
 #include <matryoshka/timer.h>
 #include <matryoshka/keyboard.h>
 #include <matryoshka/vmm.h>
+#include <matryoshka/vfs.h>
+#include <matryoshka/ramfs.h>
 #include <matryoshka/task.h>
 #include <matryoshka/shell.h>
 
@@ -333,6 +335,10 @@ void kernel_main(unsigned long mbi_addr) {
         vga_puts("ERROR: Failed to initialize VMM!\n");
         goto halt;
     }
+    
+    // Initialize Virtual File System + RAM filesystem
+    vfs_init();
+    ramfs_init();
     
     // Initialize task scheduler and register yield as keyboard wait
     task_init();
